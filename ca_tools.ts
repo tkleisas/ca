@@ -334,7 +334,15 @@ async function execSearchFiles(pattern: string, path: string | undefined, glob: 
       if (code === 0 || code === 1) { result = new TextDecoder().decode(stdout); }
       else throw new Error("rg failed");
     } catch {
-      const grepArgs = ["-rn", "--include=" + (glob ? glob.replace(/[{}]/g, "") : "*"), "-e", pattern, searchPath];
+      // Fallback to grep — translate glob to --include patterns
+      const grepArgs = ["-rn", "-e", pattern];
+      if (glob) {
+        const patterns = glob.split(",").map((g) => g.trim());
+        for (const p of patterns) {
+          grepArgs.push("--include=" + p);
+        }
+      }
+      grepArgs.push(searchPath);
       const cmd = new Deno.Command("grep", { args: grepArgs, stdout: "piped", stderr: "piped" });
       const { stdout } = await cmd.output();
       result = new TextDecoder().decode(stdout);
