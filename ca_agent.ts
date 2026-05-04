@@ -2,7 +2,7 @@ import type { ChatMessage, ConversationExport } from "./ca_types.ts";
 import type { AgentConfig } from "./ca_types.ts";
 import { buildToolDefs, executeTool, type AskUserCallback } from "./ca_tools.ts";
 import { chatCompletion } from "./ca_client.ts";
-import { Spinner, formatToolCall, formatToolResult, colorize, dim, bold } from "./ca_ui.ts";
+import { C, Spinner, formatToolCall, formatToolResult, colorize, dim, bold } from "./ca_ui.ts";
 import { estimateMessagesTokens } from "./ca_client.ts";
 import { sandboxContext } from "./ca_sandbox.ts";
 
@@ -21,6 +21,7 @@ export function buildSystemPrompt(config: AgentConfig): string {
     config.tools.list_directory ? "- list_directory(path?, depth?): List directory contents" : null,
     config.tools.ask_user ? "- ask_user(question): Ask the user a clarifying question" : null,
     config.tools.apply_diff ? "- apply_diff(path, search, replace): Apply a targeted edit to a file" : null,
+    config.tools.restart_self ? "- restart_self(confirm): Restart CA with an improved version of itself" : null,
   ].filter(Boolean).join("\n");
 
   let prompt =
@@ -223,6 +224,7 @@ export async function run(
             sandbox: config.sandbox,
             approve: config.approve,
             dryRun: config.dryRun,
+            autoCommit: config.autoCommit,
             cwd: Deno.cwd(),
             askUser,
           });
@@ -243,6 +245,25 @@ export async function run(
         });
         if (result.startsWith("Error") || result.startsWith("Error:")) {
           hasErrors = true;
+        }
+      }
+
+      // Check for restart signal
+      for (const { tc, result } of toolResults) {
+        if (result === "RESTART_READY") {
+          spinner.stop();
+          console.error(`\n${colorize("🔄", C.cyan)} ${bold("Restarting with new version...")}`);
+          const resumeFile = `${Deno.cwd()}/.ca_resume.json`;
+          await saveConversation(msgs, resumeFile);
+          console.error(dim("  Spawning new CA process..."));
+          const child = new Deno.Command("deno", {
+            args: ["run", "-A", "ca.ts", "--resume", resumeFile],
+            cwd: Deno.cwd(),
+            stdin: "inherit",
+            stdout: "inherit",
+            stderr: "inherit",
+          }).spawn();
+          Deno.exit(0);
         }
       }
 
