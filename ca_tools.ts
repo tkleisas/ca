@@ -336,7 +336,8 @@ async function execRunCommand(command: string, workdir: string | undefined, opts
 }
 
 async function execSearchFiles(pattern: string, path: string | undefined, glob: string | undefined, maxResults: number, opts: ToolExecOptions): Promise<ToolExecResult> {
-  if (!pattern || typeof pattern !== "string") return { output: "Error: pattern is required", error: true };
+  const err = requireString(pattern, "pattern");
+  if (err) return { output: err, error: true };
   const searchPath = path ?? opts.cwd;
   const safety = isPathSafe(searchPath, opts.cwd, opts.sandbox);
   if (!safety.safe) return { output: `Error: ${safety.reason}`, error: true };
