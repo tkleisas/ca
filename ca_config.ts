@@ -117,6 +117,7 @@ function caJsonToConfig(json: CaJsonConfig): Partial<AgentConfig> {
   if (json.api_base) out.apiBase = json.api_base.replace(/\/+$/, "");
   if (json.max_tokens) out.maxTokens = json.max_tokens;
   if (json.max_rounds) out.maxRounds = json.max_rounds;
+  if (json.max_retries !== undefined) out.maxRetries = json.max_retries;
   if (json.temperature !== undefined) out.temperature = json.temperature;
   if (json.top_p !== undefined) out.topP = json.top_p;
   if (json.stop) out.stop = json.stop;
