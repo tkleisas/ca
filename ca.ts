@@ -1,8 +1,7 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run --allow-net --allow-env
 
-const VERSION = "0.1.0";
-
 import type { ChatMessage, AgentConfig } from "./ca_types.ts";
+import { VERSION } from "./ca_types.ts";
 import { initConfig, getConfig, applyCliOverrides } from "./ca_config.ts";
 import { buildSystemContent, run, saveConversation, loadConversation } from "./ca_agent.ts";
 import { C, colorize, dim, bold, printBanner, separator, highlightCode } from "./ca_ui.ts";
