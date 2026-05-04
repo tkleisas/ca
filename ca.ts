@@ -375,6 +375,48 @@ async function interactive(): Promise<void> {
           continue;
         }
 
+        case "/set": {
+          const setParts = rest.split(/\s+/);
+          const key = setParts[0];
+          const val = setParts[1];
+
+          if (!key || val === undefined) {
+            console.error(`${colorize("✘", C.red)} Usage: /set <key> <value>`);
+            console.error(dim("  Keys: maxRounds, maxRetries, maxTokens, temperature,"));
+            console.error(dim("        topP, stream (on/off), thinking (on/off),"));
+            console.error(dim("        approve (on/off), dryRun (on/off), sandbox (on/off),"));
+            console.error(dim("        autoCommit (on/off)"));
+            continue;
+          }
+
+          const boolKeys = ["stream", "thinking", "approve", "dryRun", "sandbox", "autoCommit"];
+          const numKeys = ["maxRounds", "maxRetries", "maxTokens", "temperature", "topP"];
+
+          if (boolKeys.includes(key)) {
+            const on = val === "on" || val === "1" || val === "true";
+            (config as any)[key] = on;
+            applyCliOverrides({ [key]: on } as any);
+            console.error(colorize(`${key} = ${on ? "on" : "off"}`, C.green));
+          } else if (numKeys.includes(key)) {
+            const num = parseFloat(val);
+            if (isNaN(num)) {
+              console.error(`${colorize("✘", C.red)} ${key} requires a number.`);
+              continue;
+            }
+            // temperature and topP are floats, others are ints
+            const finalVal = (key === "temperature" || key === "topP") ? num : Math.floor(num);
+            (config as any)[key] = finalVal;
+            applyCliOverrides({ [key]: finalVal } as any);
+            console.error(colorize(`${key} = ${finalVal}`, C.green));
+          } else {
+            console.error(`${colorize("✘", C.red)} Unknown key: ${key}`);
+            console.error(dim("  Valid keys: maxRounds, maxRetries, maxTokens, temperature,"));
+            console.error(dim("             topP, stream, thinking, approve, dryRun,"));
+            console.error(dim("             sandbox, autoCommit"));
+          }
+          continue;
+        }
+
         default:
           console.error(
             `${colorize("✘", C.red)} Unknown command: ${trimmed}. ${dim("Type /help for available commands.")}`,
