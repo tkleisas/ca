@@ -419,9 +419,9 @@ async function listDirRecursive(dirPath: string, maxDepth: number, currentDepth:
   }
 }
 
-function formatSize(filePath: string): string {
+async function formatSize(filePath: string): Promise<string> {
   try {
-    const info = Deno.statSync(filePath);
+    const info = await Deno.stat(filePath);
     const bytes = info.size;
     if (bytes < 1024) return `${bytes}B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
