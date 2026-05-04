@@ -43,6 +43,8 @@ ${b("Options:")}
   ${c("--sandbox")}                       ${d("Enable path sandboxing (default: on)")}
   ${c("--no-sandbox")}                    ${d("Disable path sandboxing")}
   ${c("--approve")}                       ${d("Require approval for writes & commands")}
+  ${c("--resume")} ${d("<file>")}                ${d("Resume from a saved conversation")}
+  ${c("--no-auto-commit")}                ${d("Disable git auto-commit before writes")}
   ${c("--dry-run")}                       ${d("Show what would be done without doing it")}
 
 ${b("Environment:")}
@@ -185,6 +187,13 @@ async function interactive(): Promise<void> {
       const rest = parts.slice(1).join(" ");
 
       switch (cmd) {
+        case "/upgrade": {
+          console.error(`\n${colorize("🔄", C.cyan)} ${bold("Self-upgrade initiated...")}`);
+          console.error(dim("  The agent will modify source files, then call restart_self."));
+          console.error(dim("  Type /upgrade-go when ready, or just tell CA to upgrade itself."));
+          continue;
+        }
+
         case "/quit":
         case "/exit":
           console.error(colorize("Goodbye!", C.green));
@@ -201,6 +210,7 @@ async function interactive(): Promise<void> {
           console.error(`  ${colorize("/save", C.cyan)} <file>  ${dim("Save conversation to file")}`);
           console.error(`  ${colorize("/load", C.cyan)} <file>  ${dim("Load conversation from file")}`);
           console.error(`  ${colorize("/edit", C.cyan)}         ${dim("Remove last exchange (user+assistant)")}`);
+          console.error(`  ${colorize("/upgrade", C.cyan)}      ${dim("Initiate self-upgrade sequence")}`);
           console.error(`  ${colorize("/tokens", C.cyan)}       ${dim("Estimate token usage")}`);
           console.error(`  ${colorize("/quit", C.cyan)}         ${dim("Exit")}`);
           console.error(`  ${colorize("/exit", C.cyan)}         ${dim("Exit")}`);
@@ -370,6 +380,27 @@ async function interactive(): Promise<void> {
       }
     }
 
+    // Shell passthrough: !cmd runs directly without agent
+    if (trimmed.startsWith("!")) {
+      const shellCmd = trimmed.substring(1).trim();
+      if (shellCmd) {
+        console.error(dim(`! ${shellCmd}`));
+        try {
+          const proc = new Deno.Command("bash", {
+            args: ["-c", shellCmd],
+            cwd: Deno.cwd(),
+            stdout: "inherit",
+            stderr: "inherit",
+          });
+          const { code } = await proc.output();
+          if (code !== 0) console.error(dim(`[exit: ${code}]`));
+        } catch (e) {
+          console.error(`${colorize("✘", C.red)} ${(e as Error).message}`);
+        }
+      }
+      continue;
+    }
+
     if (!trimmed) continue;
 
     // Run the agent with the current message
@@ -463,6 +494,12 @@ async function main(): Promise<void> {
     } else if (a === "--approve") {
       cliOverrides.approve = true;
       i++;
+    } else if (a === "--resume" && args[i + 1]) {
+      cliOverrides.resumeFile = args[++i];
+      i++;
+    } else if (a === "--no-auto-commit") {
+      cliOverrides.autoCommit = false;
+      i++;
     } else if (a === "--dry-run") {
       cliOverrides.dryRun = true;
       i++;
@@ -475,6 +512,73 @@ async function main(): Promise<void> {
   // Initialize configuration (env -> file -> CLI)
   await initConfig(cliOverrides);
   const config = getConfig();
+
+  // Resume from saved conversation
+  if (config.resumeFile) {
+    console.error(`${colorize("📂", C.cyan)} ${bold("Resuming conversation...")}`);
+    try {
+      const msgs = await loadConversation(config.resumeFile);
+      const contextStr = await getProjectContext(Deno.cwd());
+      const systemPrompt = buildSystemPrompt(config);
+      if (msgs[0]?.role === "system") {
+        msgs[0].content = contextStr
+          ? systemPrompt + `\n\nProject context:\n${contextStr}`
+          : systemPrompt;
+      }
+      printBanner(config);
+      console.error(colorize("Conversation resumed. Continue where you left off.", C.green));
+      console.error("");
+      
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder();
+      let stdinBuffer = "";
+      async function resumeReadLine(promptStr: string): Promise<string | null> {
+        const nlIndex = stdinBuffer.indexOf("\n");
+        if (nlIndex !== -1) {
+          const line = stdinBuffer.substring(0, nlIndex);
+          stdinBuffer = stdinBuffer.substring(nlIndex + 1);
+          return line.replace(/\r$/, "");
+        }
+        await Deno.stdout.write(encoder.encode(promptStr));
+        const buf = new Uint8Array(4096);
+        while (true) {
+          const n = await Deno.stdin.read(buf);
+          if (n === null) return stdinBuffer.length > 0 ? stdinBuffer : null;
+          stdinBuffer += decoder.decode(buf.subarray(0, n));
+          const nlIdx = stdinBuffer.indexOf("\n");
+          if (nlIdx !== -1) {
+            const line = stdinBuffer.substring(0, nlIdx);
+            stdinBuffer = stdinBuffer.substring(nlIdx + 1);
+            return line.replace(/\r$/, "");
+          }
+        }
+      }
+      async function resumeAskUser(question: string): Promise<string> {
+        console.error(`\n${colorize("💬", C.cyan)} ${bold("Agent asks:")} ${question}`);
+        const answer = await resumeReadLine(`${colorize("❯❯ ", C.cyan)}`);
+        return answer?.trim() ?? "";
+      }
+      while (true) {
+        const line = await resumeReadLine(colorize("❯ ", C.cyan));
+        if (line === null) break;
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        if (trimmed === "/quit" || trimmed === "/exit") {
+          console.error(colorize("Goodbye!", C.green));
+          break;
+        }
+        try {
+          await run(trimmed, msgs, { config, askUser: resumeAskUser });
+        } catch (e) {
+          console.error(`\n${colorize("✘", C.red)} ${bold("Error:")} ${(e as Error).message}`);
+        }
+      }
+      return;
+    } catch (e) {
+      console.error(`${colorize("✘", C.red)} ${bold("Resume failed:")} ${(e as Error).message}`);
+      Deno.exit(1);
+    }
+  }
 
   // Interactive mode
   if (interactiveMode) {
