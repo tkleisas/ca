@@ -2,6 +2,38 @@ import type { ChatMessage, ToolDef, UsageInfo } from "./ca_types.ts";
 import type { AgentConfig } from "./ca_types.ts";
 import { colorize, dim } from "./ca_ui.ts";
 
+// ─── Shared API Helpers ────────────────────────────────
+
+function buildApiHeaders(config: AgentConfig): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (config.apiKey) headers["Authorization"] = `Bearer ${config.apiKey}`;
+  return headers;
+}
+
+function parseUsage(data: Record<string, unknown>): UsageInfo | undefined {
+  const u = data.usage as Record<string, number> | undefined;
+  if (!u) return undefined;
+  return {
+    promptTokens: u.prompt_tokens,
+    completionTokens: u.completion_tokens,
+    totalTokens: u.total_tokens,
+  };
+}
+
+async function retryDelay(attempt: number, maxRetries: number): Promise<void> {
+  const delay = 1000 * (attempt + 1);
+  console.error(`${colorize("⚠", dim(""))} Retrying in ${delay}ms...`);
+  await new Promise((r) => setTimeout(r, delay));
+}
+
+async function handleRateLimit(response: Response, attempt: number, maxRetries: number): Promise<boolean> {
+  if (response.status === 429 && attempt < maxRetries - 1) {
+    await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+    return true; // retry
+  }
+  return false;
+}
+
 // ─── Non-Streaming Completion ─────────────────────────
 
 export interface CompletionResult {
@@ -16,13 +48,9 @@ export async function chatCompletion(
 ): Promise<CompletionResult> {
   const url = `${config.apiBase}/chat/completions`;
   const body = buildRequestBody(messages, tools, config);
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (config.apiKey) headers["Authorization"] = `Bearer ${config.apiKey}`;
-
+  const headers = buildApiHeaders(config);
   const maxRetries = config.maxRetries;
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const response = await fetch(url, {
@@ -33,29 +61,16 @@ export async function chatCompletion(
 
       if (!response.ok) {
         const text = await response.text();
-        if (response.status === 429 && attempt < maxRetries - 1) {
-          await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
-          continue;
-        }
+        if (await handleRateLimit(response, attempt, maxRetries)) continue;
         throw new Error(`API ${response.status}: ${text.substring(0, 500)}`);
       }
 
       const data = await response.json();
       const message = data.choices[0].message as ChatMessage;
-      const usage: UsageInfo | undefined = data.usage
-        ? {
-          promptTokens: data.usage.prompt_tokens,
-          completionTokens: data.usage.completion_tokens,
-          totalTokens: data.usage.total_tokens,
-        }
-        : undefined;
-
-      return { message, usage };
+      return { message, usage: parseUsage(data) };
     } catch (e) {
       if (attempt === maxRetries - 1) throw e;
-      const delay = 1000 * (attempt + 1);
-      console.error(`${colorize("⚠", dim(""))} Retrying in ${delay}ms...`);
-      await new Promise((r) => setTimeout(r, delay));
+      await retryDelay(attempt, maxRetries);
     }
   }
   throw new Error("Unreachable");
