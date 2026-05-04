@@ -259,21 +259,13 @@ export async function run(
       }
 
       // Check for restart signal
-      for (const { tc, result } of toolResults) {
+      for (const { result } of toolResults) {
         if (result === "RESTART_READY") {
           spinner.stop();
           console.error(`\n${colorize("🔄", C.cyan)} ${bold("Restarting with new version...")}`);
           const resumeFile = `${Deno.cwd()}/.ca_resume.json`;
           await saveConversation(msgs, resumeFile);
-          console.error(dim("  Spawning new CA process..."));
-          const child = new Deno.Command("deno", {
-            args: ["run", "-A", "ca.ts", "--resume", resumeFile],
-            cwd: Deno.cwd(),
-            stdin: "inherit",
-            stdout: "inherit",
-            stderr: "inherit",
-          }).spawn();
-          Deno.exit(0);
+          return { messages: msgs, needsRestart: true };
         }
       }
 
