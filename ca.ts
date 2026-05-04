@@ -582,54 +582,9 @@ async function main(): Promise<void> {
           ? systemPrompt + `\n\nProject context:\n${contextStr}`
           : systemPrompt;
       }
-      printBanner(config);
-      console.error(colorize("Conversation resumed. Continue where you left off.", C.green));
+      console.error(colorize("📂 Conversation resumed. Continue where you left off.", C.green));
       console.error("");
-      
-      const encoder = new TextEncoder();
-      const decoder = new TextDecoder();
-      let stdinBuffer = "";
-      async function resumeReadLine(promptStr: string): Promise<string | null> {
-        const nlIndex = stdinBuffer.indexOf("\n");
-        if (nlIndex !== -1) {
-          const line = stdinBuffer.substring(0, nlIndex);
-          stdinBuffer = stdinBuffer.substring(nlIndex + 1);
-          return line.replace(/\r$/, "");
-        }
-        await Deno.stdout.write(encoder.encode(promptStr));
-        const buf = new Uint8Array(4096);
-        while (true) {
-          const n = await Deno.stdin.read(buf);
-          if (n === null) return stdinBuffer.length > 0 ? stdinBuffer : null;
-          stdinBuffer += decoder.decode(buf.subarray(0, n));
-          const nlIdx = stdinBuffer.indexOf("\n");
-          if (nlIdx !== -1) {
-            const line = stdinBuffer.substring(0, nlIdx);
-            stdinBuffer = stdinBuffer.substring(nlIdx + 1);
-            return line.replace(/\r$/, "");
-          }
-        }
-      }
-      async function resumeAskUser(question: string): Promise<string> {
-        console.error(`\n${colorize("💬", C.cyan)} ${bold("Agent asks:")} ${question}`);
-        const answer = await resumeReadLine(`${colorize("❯❯ ", C.cyan)}`);
-        return answer?.trim() ?? "";
-      }
-      while (true) {
-        const line = await resumeReadLine(colorize("❯ ", C.cyan));
-        if (line === null) break;
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        if (trimmed === "/quit" || trimmed === "/exit") {
-          console.error(colorize("Goodbye!", C.green));
-          break;
-        }
-        try {
-          await run(trimmed, msgs, { config, askUser: resumeAskUser });
-        } catch (e) {
-          console.error(`\n${colorize("✘", C.red)} ${bold("Error:")} ${(e as Error).message}`);
-        }
-      }
+      await interactive(msgs);
       return;
     } catch (e) {
       console.error(`${colorize("✘", C.red)} ${bold("Resume failed:")} ${(e as Error).message}`);
