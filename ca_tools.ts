@@ -439,8 +439,10 @@ async function execAskUser(question: string, opts: ToolExecOptions): Promise<Too
 }
 
 async function execApplyDiff(path: string, search: string, replace: string, opts: ToolExecOptions): Promise<ToolExecResult> {
-  if (!path || typeof path !== "string") return { output: "Error: path is required", error: true };
-  if (!search) return { output: "Error: search block is required", error: true };
+  const pathErr = requireString(path, "path");
+  if (pathErr) return { output: pathErr, error: true };
+  const searchErr = requireString(search, "search");
+  if (searchErr) return { output: searchErr, error: true };
   const safety = isPathSafe(path, opts.cwd, opts.sandbox);
   if (!safety.safe) return { output: `Error: ${safety.reason}`, error: true };
   if (opts.dryRun) return { output: `[dry-run] Would apply diff to ${path}: replace ${search.length} chars with ${replace.length} chars`, error: false };
