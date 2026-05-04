@@ -22,6 +22,7 @@ const DEFAULTS: AgentConfig = {
   sandbox: true,
   approve: false,
   dryRun: false,
+  autoCommit: true,
   tools: {
     read_file: true,
     write_file: true,
@@ -30,6 +31,7 @@ const DEFAULTS: AgentConfig = {
     list_directory: true,
     ask_user: true,
     apply_diff: true,
+    restart_self: true,
   },
   systemPrompt: undefined,
   systemPromptFile: undefined,
@@ -70,6 +72,8 @@ function loadEnv(): Partial<AgentConfig> {
   if (s("CA_SANDBOX") === "0" || s("CA_SANDBOX") === "false") out.sandbox = false;
   if (b("CA_APPROVE")) out.approve = true;
   if (b("CA_DRY_RUN")) out.dryRun = true;
+  if (b("CA_AUTO_COMMIT")) out.autoCommit = true;
+  if (s("CA_AUTO_COMMIT") === "0" || s("CA_AUTO_COMMIT") === "false") out.autoCommit = false;
   if (s("CA_SYSTEM_PROMPT")) out.systemPrompt = s("CA_SYSTEM_PROMPT")!;
   if (s("CA_SYSTEM_PROMPT_FILE")) out.systemPromptFile = s("CA_SYSTEM_PROMPT_FILE")!;
 
@@ -123,6 +127,7 @@ function caJsonToConfig(json: CaJsonConfig): Partial<AgentConfig> {
   if (json.stream !== undefined) out.stream = json.stream;
   if (json.sandbox !== undefined) out.sandbox = json.sandbox;
   if (json.approve !== undefined) out.approve = json.approve;
+  if (json.auto_commit !== undefined) out.autoCommit = json.auto_commit;
   if (json.system_prompt) out.systemPrompt = json.system_prompt;
   if (json.tools) {
     out.tools = { ...DEFAULTS.tools, ...json.tools };
@@ -152,6 +157,8 @@ export function applyCliOverrides(overrides: Partial<AgentConfig>): void {
   if (overrides.sandbox !== undefined) _config.sandbox = overrides.sandbox;
   if (overrides.approve !== undefined) _config.approve = overrides.approve;
   if (overrides.dryRun !== undefined) _config.dryRun = overrides.dryRun;
+  if (overrides.autoCommit !== undefined) _config.autoCommit = overrides.autoCommit;
+  if (overrides.resumeFile !== undefined) _config.resumeFile = overrides.resumeFile;
   if (overrides.tools) {
     _config.tools = { ..._config.tools, ...overrides.tools };
   }
@@ -206,6 +213,8 @@ function applyConfig(partial: Partial<AgentConfig>): void {
   if (partial.sandbox !== undefined) _config.sandbox = partial.sandbox;
   if (partial.approve !== undefined) _config.approve = partial.approve;
   if (partial.dryRun !== undefined) _config.dryRun = partial.dryRun;
+  if (partial.autoCommit !== undefined) _config.autoCommit = partial.autoCommit;
+  if (partial.resumeFile !== undefined) _config.resumeFile = partial.resumeFile;
   if (partial.tools) {
     _config.tools = { ..._config.tools, ...partial.tools };
   }
