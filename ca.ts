@@ -488,10 +488,12 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
     if (!trimmed) continue;
 
     // Run the agent with the current message
+    abortController = new AbortController();
     try {
       await run(trimmed, messages, {
         config,
         askUser: askUserCallback,
+        signal: abortController.signal,
       });
     } catch (e) {
       console.error(
