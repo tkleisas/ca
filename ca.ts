@@ -500,6 +500,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
 // ─── Main ──────────────────────────────────────────────
 
 async function main(): Promise<void> {
+  setupSignalHandlers();
   const args = Deno.args;
   let promptParts: string[] = [];
   let interactiveMode = false;
