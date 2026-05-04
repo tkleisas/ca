@@ -270,6 +270,7 @@ async function interactive(): Promise<void> {
           console.error(`${bold("API Base:")} ${config.apiBase}`);
           console.error(`${bold("Max tokens:")} ${config.maxTokens}`);
           console.error(`${bold("Max rounds:")} ${config.maxRounds}`);
+          console.error(`${bold("Max retries:")} ${config.maxRetries}`);
           console.error(`${bold("Temperature:")} ${config.temperature}`);
           if (config.topP !== undefined) console.error(`${bold("Top P:")} ${config.topP}`);
           if (config.stop) console.error(`${bold("Stop:")} ${config.stop}`);
