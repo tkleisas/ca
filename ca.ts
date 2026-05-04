@@ -81,14 +81,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
   const config = getConfig();
 
   // Build initial system prompt
-  let contextStr = "";
-  try {
-    contextStr = await getProjectContext(Deno.cwd());
-  } catch { /* non-critical */ }
-  const systemPrompt = buildSystemPrompt(config);
-  const systemContent = contextStr
-    ? systemPrompt + `\n\nProject context:\n${contextStr}`
-    : systemPrompt;
+  const systemContent = await buildSystemContent(config, Deno.cwd());
 
   let messages: ChatMessage[];
   if (existingMessages) {
