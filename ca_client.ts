@@ -92,7 +92,8 @@ export async function* chatCompletionStream(
   };
   if (config.apiKey) headers["Authorization"] = `Bearer ${config.apiKey}`;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const maxRetries = config.maxRetries;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -102,7 +103,7 @@ export async function* chatCompletionStream(
 
       if (!response.ok) {
         const text = await response.text();
-        if (response.status === 429 && attempt < 2) {
+        if (response.status === 429 && attempt < maxRetries - 1) {
           await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
           continue;
         }
