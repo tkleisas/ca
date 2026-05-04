@@ -93,7 +93,7 @@ async function loadCaJson(): Promise<Partial<AgentConfig>> {
     searchPaths.push("/" + parts.slice(0, i).join("/") + "/.ca.json");
   }
   // Also check XDG config
-  const xdgHome = Deno.env.get("XDG_CONFIG_HOME") ?? Deno.env.get("HOME") + "/.config";
+  const xdgHome = Deno.env.get("XDG_CONFIG_HOME") ?? (Deno.env.get("HOME") ?? "/home") + "/.config";
   searchPaths.push(xdgHome + "/ca/config.json");
 
   for (const path of searchPaths) {
