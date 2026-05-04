@@ -117,6 +117,7 @@ function makeTestConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
     apiBase: "http://localhost:8080/v1",
     maxTokens: 10000,
     maxRounds: 10,
+    maxRetries: 3,
     temperature: 0,
     stop: "",
     responseFormat: "",
