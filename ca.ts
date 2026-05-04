@@ -235,6 +235,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
           console.error(`  ${colorize("/load", C.cyan)} <file>  ${dim("Load conversation from file")}`);
           console.error(`  ${colorize("/edit", C.cyan)}         ${dim("Remove last exchange (user+assistant)")}`);
           console.error(`  ${colorize("/upgrade", C.cyan)}      ${dim("Initiate self-upgrade sequence")}`);
+          console.error(`  ${colorize("/upgrade-go", C.cyan)}   ${dim("Execute self-upgrade now")}`);
           console.error(`  ${colorize("/tokens", C.cyan)}       ${dim("Estimate token usage")}`);
           console.error(`  ${colorize("/set", C.cyan)} <k> <v>  ${dim("Set config: maxRounds, maxRetries, maxTokens, temperature, ...")}`);
           console.error(`  ${colorize("/quit", C.cyan)}         ${dim("Exit")}`);
