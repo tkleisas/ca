@@ -29,6 +29,23 @@ function setupSignalHandlers(): void {
   Deno.addSignalListener("SIGTERM", handler);
 }
 
+// ─── Restart Helper ────────────────────────────────────
+
+async function performRestart(resumeFile: string): Promise<void> {
+  console.error(dim("  Spawning new CA process..."));
+  const child = new Deno.Command("deno", {
+    args: ["run", "-A", "ca.ts", "--resume", resumeFile],
+    cwd: Deno.cwd(),
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+  }).spawn();
+  // Wait for the child to finish — keeps the foreground process group
+  // so the child can read from stdin without EIO errors
+  const status = await child.status;
+  Deno.exit(status.code);
+}
+
 // ─── CLI ───────────────────────────────────────────────
 
 function help(): void {
