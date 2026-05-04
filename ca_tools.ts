@@ -277,7 +277,8 @@ async function execWriteFile(path: string, content: string, opts: ToolExecOption
 }
 
 async function execRunCommand(command: string, workdir: string | undefined, opts: ToolExecOptions): Promise<ToolExecResult> {
-  if (!command || typeof command !== "string") return { output: "Error: command is required", error: true };
+  const err = requireString(command, "command");
+  if (err) return { output: err, error: true };
 
   const safety = isCommandSafe(command);
   if (!safety.safe) {
