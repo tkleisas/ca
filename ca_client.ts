@@ -22,7 +22,8 @@ export async function chatCompletion(
   };
   if (config.apiKey) headers["Authorization"] = `Bearer ${config.apiKey}`;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const maxRetries = config.maxRetries;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -32,7 +33,7 @@ export async function chatCompletion(
 
       if (!response.ok) {
         const text = await response.text();
-        if (response.status === 429 && attempt < 2) {
+        if (response.status === 429 && attempt < maxRetries - 1) {
           await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
           continue;
         }
@@ -51,7 +52,7 @@ export async function chatCompletion(
 
       return { message, usage };
     } catch (e) {
-      if (attempt === 2) throw e;
+      if (attempt === maxRetries - 1) throw e;
       const delay = 1000 * (attempt + 1);
       console.error(`${colorize("⚠", dim(""))} Retrying in ${delay}ms...`);
       await new Promise((r) => setTimeout(r, delay));
