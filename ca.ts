@@ -29,6 +29,7 @@ ${b("Options:")}
   ${c("--api-key")} ${d("<key>")}                 ${d("API key")}
   ${c("--max-tokens")} ${d("<n>")}                ${d("Max tokens per response (default: 384000)")}
   ${c("--max-rounds")} ${d("<n>")}                ${d("Max agent rounds (default: 100)")}
+  ${c("--max-retries")} ${d("<n>")}              ${d("Max API retry attempts (default: 3)")}
   ${c("--temperature")} ${d("<f>")}               ${d("Temperature (0-2, default: 0.0)")}
   ${c("--top-p")} ${d("<f>")}                     ${d("Top P nucleus sampling (0-1)")}
   ${c("--stop")} ${d("<seq>")}                    ${d("Stop sequence(s), comma-separated")}
