@@ -101,13 +101,9 @@ export async function* chatCompletionStream(
     stream: true,
     stream_options: { include_usage: true },
   };
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (config.apiKey) headers["Authorization"] = `Bearer ${config.apiKey}`;
-
+  const headers = buildApiHeaders(config);
   const maxRetries = config.maxRetries;
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const response = await fetch(url, {
@@ -118,10 +114,7 @@ export async function* chatCompletionStream(
 
       if (!response.ok) {
         const text = await response.text();
-        if (response.status === 429 && attempt < maxRetries - 1) {
-          await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
-          continue;
-        }
+        if (await handleRateLimit(response, attempt, maxRetries)) continue;
         yield { type: "error", error: `API ${response.status}: ${text.substring(0, 500)}` };
         return;
       }
