@@ -7,6 +7,24 @@ import { initConfig, getConfig, applyCliOverrides } from "./ca_config.ts";
 import { buildSystemPrompt, buildSystemContent, run, getProjectContext, saveConversation, loadConversation } from "./ca_agent.ts";
 import { C, colorize, dim, bold, printBanner, separator, highlightCode } from "./ca_ui.ts";
 
+// ─── Global State ──────────────────────────────────────
+
+let shuttingDown = false;
+
+function setupSignalHandlers(): void {
+  const handler = () => {
+    if (shuttingDown) {
+      console.error(dim("\nForcing exit..."));
+      Deno.exit(1);
+    }
+    shuttingDown = true;
+    console.error(`\n${colorize("⚠", C.yellow)} ${bold("Interrupted. Finishing current operation...")}`);
+    console.error(dim("  Press Ctrl+C again to force exit."));
+  };
+  Deno.addSignalListener("SIGINT", handler);
+  Deno.addSignalListener("SIGTERM", handler);
+}
+
 // ─── CLI ───────────────────────────────────────────────
 
 function help(): void {
