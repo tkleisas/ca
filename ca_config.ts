@@ -1,5 +1,4 @@
 import type { AgentConfig, CaJsonConfig } from "./ca_types.ts";
-import { isPathSafe } from "./ca_sandbox.ts";
 
 // ─── Defaults ──────────────────────────────────────────
 
