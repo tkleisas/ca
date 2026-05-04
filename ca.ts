@@ -213,6 +213,7 @@ async function interactive(): Promise<void> {
           console.error(`  ${colorize("/edit", C.cyan)}         ${dim("Remove last exchange (user+assistant)")}`);
           console.error(`  ${colorize("/upgrade", C.cyan)}      ${dim("Initiate self-upgrade sequence")}`);
           console.error(`  ${colorize("/tokens", C.cyan)}       ${dim("Estimate token usage")}`);
+          console.error(`  ${colorize("/set", C.cyan)} <k> <v>  ${dim("Set config: maxRounds, maxRetries, maxTokens, temperature, ...")}`);
           console.error(`  ${colorize("/quit", C.cyan)}         ${dim("Exit")}`);
           console.error(`  ${colorize("/exit", C.cyan)}         ${dim("Exit")}`);
           console.error(`\n${dim("Multi-line: Type \\e on a new line to submit.")}`);
