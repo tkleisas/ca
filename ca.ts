@@ -583,12 +583,9 @@ async function main(): Promise<void> {
     console.error(`${colorize("📂", C.cyan)} ${bold("Resuming conversation...")}`);
     try {
       const msgs = await loadConversation(config.resumeFile);
-      const contextStr = await getProjectContext(Deno.cwd());
-      const systemPrompt = buildSystemPrompt(config);
+      const systemContent = await buildSystemContent(config, Deno.cwd());
       if (msgs[0]?.role === "system") {
-        msgs[0].content = contextStr
-          ? systemPrompt + `\n\nProject context:\n${contextStr}`
-          : systemPrompt;
+        msgs[0].content = systemContent;
       }
       console.error(colorize("📂 Conversation resumed. Continue where you left off.", C.green));
       console.error("");
