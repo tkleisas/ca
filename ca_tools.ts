@@ -186,6 +186,25 @@ export async function executeTool(
   }
 }
 
+// ─── Input Validation Helpers ──────────────────────────
+
+function requireString(val: unknown, name: string): string | null {
+  if (typeof val !== "string" || !val) return `Error: ${name} is required and must be a non-empty string`;
+  return null;
+}
+
+function requireBoolean(val: unknown, name: string): string | null {
+  if (typeof val !== "boolean") return `Error: ${name} must be a boolean`;
+  return null;
+}
+
+function requireNumber(val: unknown, name: string, min?: number, max?: number): string | null {
+  if (typeof val !== "number" || isNaN(val)) return `Error: ${name} must be a number`;
+  if (min !== undefined && val < min) return `Error: ${name} must be >= ${min}`;
+  if (max !== undefined && val > max) return `Error: ${name} must be <= ${max}`;
+  return null;
+}
+
 // ─── Individual Executors ──────────────────────────────
 
 async function execReadFile(path: string, opts: ToolExecOptions): Promise<ToolExecResult> {
