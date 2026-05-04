@@ -148,17 +148,7 @@ export async function run(
   const config = opts?.config!;
   const askUser = opts?.askUser;
   const tools = buildToolDefs(config);
-  const systemPrompt = buildSystemPrompt(config);
-
-  // Gather project context
-  let contextStr = "";
-  try {
-    contextStr = await getProjectContext(Deno.cwd());
-  } catch { /* non-critical */ }
-
-  const systemContent = contextStr
-    ? systemPrompt + `\n\nProject context:\n${contextStr}`
-    : systemPrompt;
+  const systemContent = await buildSystemContent(config, Deno.cwd());
 
   const msgs = messages ?? [
     { role: "system" as const, content: systemContent },
