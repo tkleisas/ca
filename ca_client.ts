@@ -246,9 +246,7 @@ export async function* chatCompletionStream(
         yield { type: "error", error: (e as Error).message };
         return;
       }
-      const delay = 1000 * (attempt + 1);
-      console.error(`${colorize("⚠", dim(""))} Retrying in ${delay}ms...`);
-      await new Promise((r) => setTimeout(r, delay));
+      await retryDelay(attempt, maxRetries);
     }
   }
 }
