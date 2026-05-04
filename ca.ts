@@ -68,6 +68,7 @@ ${b("Options:")}
   ${c("--approve")}                       ${d("Require approval for writes & commands")}
   ${c("--resume")} ${d("<file>")}                ${d("Resume from a saved conversation")}
   ${c("--no-auto-commit")}                ${d("Disable git auto-commit before writes")}
+  ${c("--auto-commit")}                  ${d("Enable git auto-commit (default)")}
   ${c("--dry-run")}                       ${d("Show what would be done without doing it")}
 
 ${b("Environment:")}
