@@ -142,32 +142,12 @@ function caJsonToConfig(json: CaJsonConfig): Partial<AgentConfig> {
 // ─── CLI Overrides ─────────────────────────────────────
 
 export function applyCliOverrides(overrides: Partial<AgentConfig>): void {
-  if (overrides.model !== undefined) _config.model = overrides.model;
-  if (overrides.apiKey !== undefined) _config.apiKey = overrides.apiKey;
-  if (overrides.apiBase !== undefined) _config.apiBase = overrides.apiBase.replace(/\/+$/, "");
-  if (overrides.maxTokens !== undefined) _config.maxTokens = overrides.maxTokens;
-  if (overrides.maxRounds !== undefined) _config.maxRounds = overrides.maxRounds;
-  if (overrides.maxRetries !== undefined) _config.maxRetries = overrides.maxRetries;
-  if (overrides.temperature !== undefined) _config.temperature = overrides.temperature;
-  if (overrides.topP !== undefined) _config.topP = overrides.topP;
-  if (overrides.stop !== undefined) _config.stop = overrides.stop;
-  if (overrides.responseFormat !== undefined) _config.responseFormat = overrides.responseFormat;
-  if (overrides.logprobs !== undefined) _config.logprobs = overrides.logprobs;
-  if (overrides.topLogprobs !== undefined) _config.topLogprobs = overrides.topLogprobs;
-  if (overrides.userId !== undefined) _config.userId = overrides.userId;
-  if (overrides.thinking !== undefined) _config.thinking = overrides.thinking;
-  if (overrides.reasoningEffort !== undefined) _config.reasoningEffort = overrides.reasoningEffort;
-  if (overrides.stream !== undefined) _config.stream = overrides.stream;
-  if (overrides.sandbox !== undefined) _config.sandbox = overrides.sandbox;
-  if (overrides.approve !== undefined) _config.approve = overrides.approve;
-  if (overrides.dryRun !== undefined) _config.dryRun = overrides.dryRun;
-  if (overrides.autoCommit !== undefined) _config.autoCommit = overrides.autoCommit;
-  if (overrides.resumeFile !== undefined) _config.resumeFile = overrides.resumeFile;
-  if (overrides.tools) {
-    _config.tools = { ..._config.tools, ...overrides.tools };
+  // Normalize apiBase before applying
+  const normalized = { ...overrides };
+  if (normalized.apiBase !== undefined) {
+    normalized.apiBase = normalized.apiBase.replace(/\/+$/, "");
   }
-  if (overrides.systemPrompt !== undefined) _config.systemPrompt = overrides.systemPrompt;
-  if (overrides.systemPromptFile !== undefined) _config.systemPromptFile = overrides.systemPromptFile;
+  applyConfig(normalized);
 }
 
 // ─── Initialize ────────────────────────────────────────
