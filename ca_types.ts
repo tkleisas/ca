@@ -68,11 +68,14 @@ export interface AgentConfig {
   sandbox: boolean;
   approve: boolean;
   dryRun: boolean;
+  autoCommit: boolean;
   // Tools enabled
   tools: EnabledTools;
   // System prompt
   systemPrompt?: string;
   systemPromptFile?: string;
+  // Resume
+  resumeFile?: string;
 }
 
 export interface EnabledTools {
@@ -83,6 +86,7 @@ export interface EnabledTools {
   list_directory: boolean;
   ask_user: boolean;
   apply_diff: boolean;
+  restart_self: boolean;
 }
 
 // ─── Project Config File ─────────────────────────────
@@ -105,6 +109,7 @@ export interface CaJsonConfig {
   stream?: boolean;
   sandbox?: boolean;
   approve?: boolean;
+  auto_commit?: boolean;
   tools?: Partial<EnabledTools>;
   system_prompt?: string;
 }
@@ -122,6 +127,7 @@ export interface ConversationExport {
 export interface ToolExecResult {
   output: string;
   error: boolean;
+  diff?: string;
 }
 
 // ─── Sandbox Check Result ────────────────────────────
@@ -137,4 +143,21 @@ export interface UsageInfo {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+}
+
+// ─── Diff Hunk ────────────────────────────────────────
+
+export interface DiffHunk {
+  oldStart: number;
+  oldCount: number;
+  newStart: number;
+  newCount: number;
+  lines: DiffLine[];
+}
+
+export interface DiffLine {
+  kind: "add" | "del" | "ctx";
+  content: string;
+  oldLine?: number;
+  newLine?: number;
 }
