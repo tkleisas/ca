@@ -430,7 +430,8 @@ function formatSize(filePath: string): string {
 }
 
 async function execAskUser(question: string, opts: ToolExecOptions): Promise<ToolExecResult> {
-  if (!question || typeof question !== "string") return { output: "Error: question is required", error: true };
+  const err = requireString(question, "question");
+  if (err) return { output: err, error: true };
   if (opts.dryRun) return { output: `[dry-run] Would ask: ${question}`, error: false };
   if (!opts.askUser) return { output: `User interaction not available. Agent wants to ask: "${question}". In interactive mode you would be prompted.`, error: false };
   const answer = await opts.askUser(question);
