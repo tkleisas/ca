@@ -138,11 +138,16 @@ export interface AgentOptions {
   signal?: AbortSignal;
 }
 
+export interface RunResult {
+  messages: ChatMessage[];
+  needsRestart: boolean;
+}
+
 export async function run(
   prompt: string,
   messages?: ChatMessage[],
   opts?: AgentOptions,
-): Promise<ChatMessage[]> {
+): Promise<RunResult> {
   const config = opts?.config!;
   const askUser = opts?.askUser;
   const tools = buildToolDefs(config);
