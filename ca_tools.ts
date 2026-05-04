@@ -225,8 +225,9 @@ async function execReadFile(path: string, opts: ToolExecOptions): Promise<ToolEx
 }
 
 async function execWriteFile(path: string, content: string, opts: ToolExecOptions): Promise<ToolExecResult> {
-  if (!path || typeof path !== "string") return { output: "Error: path is required", error: true };
-  if (content === undefined || content === null) return { output: "Error: content is required", error: true };
+  const pathErr = requireString(path, "path");
+  if (pathErr) return { output: pathErr, error: true };
+  if (content === undefined || content === null || typeof content !== "string") return { output: "Error: content is required and must be a string", error: true };
 
   const safety = isPathSafe(path, opts.cwd, opts.sandbox);
   if (!safety.safe) return { output: `Error: ${safety.reason}`, error: true };
