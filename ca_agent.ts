@@ -167,6 +167,12 @@ export async function run(
   let totalTokens = estimateMessagesTokens(msgs);
 
   for (let round = 1; round <= config.maxRounds; round++) {
+    // Check for abort signal
+    if (opts?.signal?.aborted) {
+      console.error(`\n${colorize("⚠", dim(""))} Aborted by signal.`);
+      break;
+    }
+
     // Token budget check
     const estTokens = estimateMessagesTokens(msgs);
     if (estTokens > config.maxTokens * 0.85) {
