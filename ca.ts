@@ -592,6 +592,9 @@ async function main(): Promise<void> {
     } else if (a === "--no-auto-commit") {
       cliOverrides.autoCommit = false;
       i++;
+    } else if (a === "--auto-commit") {
+      cliOverrides.autoCommit = true;
+      i++;
     } else if (a === "--dry-run") {
       cliOverrides.dryRun = true;
       i++;
