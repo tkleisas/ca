@@ -208,7 +208,8 @@ function requireNumber(val: unknown, name: string, min?: number, max?: number): 
 // ─── Individual Executors ──────────────────────────────
 
 async function execReadFile(path: string, opts: ToolExecOptions): Promise<ToolExecResult> {
-  if (!path || typeof path !== "string") return { output: "Error: path is required", error: true };
+  const err = requireString(path, "path");
+  if (err) return { output: err, error: true };
   const safety = isPathSafe(path, opts.cwd, opts.sandbox);
   if (!safety.safe) return { output: `Error: ${safety.reason}`, error: true };
   if (opts.dryRun) return { output: `[dry-run] Would read file: ${path}`, error: false };
