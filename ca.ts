@@ -512,11 +512,15 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
     // Run the agent with the current message
     abortController = new AbortController();
     try {
-      await run(trimmed, messages, {
+      const result = await run(trimmed, messages, {
         config,
         askUser: askUserCallback,
         signal: abortController.signal,
       });
+      messages = result.messages;
+      if (result.needsRestart) {
+        await performRestart(`${Deno.cwd()}/.ca_resume.json`);
+      }
     } catch (e) {
       console.error(
         `\n${colorize("✘", C.red)} ${bold("Error:")} ${(e as Error).message}`,
