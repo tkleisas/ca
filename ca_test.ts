@@ -128,6 +128,7 @@ function makeTestConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
     sandbox: true,
     approve: false,
     dryRun: false,
+    autoCommit: true,
     tools: {
       read_file: true,
       write_file: true,
@@ -136,6 +137,7 @@ function makeTestConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
       list_directory: true,
       ask_user: true,
       apply_diff: true,
+      restart_self: true,
     },
     ...overrides,
   };
@@ -144,7 +146,7 @@ function makeTestConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
 Deno.test("buildToolDefs - includes all tools by default", () => {
   const config = makeTestConfig();
   const tools = buildToolDefs(config);
-  assertEquals(tools.length, 7);
+  assertEquals(tools.length, 8);
   const names = tools.map(t => t.function.name);
   assertEquals(names.includes("read_file"), true);
   assertEquals(names.includes("write_file"), true);
@@ -153,6 +155,7 @@ Deno.test("buildToolDefs - includes all tools by default", () => {
   assertEquals(names.includes("list_directory"), true);
   assertEquals(names.includes("ask_user"), true);
   assertEquals(names.includes("apply_diff"), true);
+  assertEquals(names.includes("restart_self"), true);
 });
 
 Deno.test("buildToolDefs - respects disabled tools", () => {
@@ -165,6 +168,7 @@ Deno.test("buildToolDefs - respects disabled tools", () => {
       list_directory: false,
       ask_user: false,
       apply_diff: false,
+      restart_self: false,
     },
   });
   const tools = buildToolDefs(config);
