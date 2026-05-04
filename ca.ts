@@ -2,342 +2,516 @@
 
 const VERSION = "0.1.0";
 
-// ─── Types ─────────────────────────────────────────────
-
-interface ChatMessage {
-  role: "system" | "user" | "assistant" | "tool";
-  content: string | null;
-  tool_calls?: ToolCall[];
-  tool_call_id?: string;
-}
-
-interface ToolCall {
-  id: string;
-  type: "function";
-  function: {
-    name: string;
-    arguments: string;
-  };
-}
-
-interface ToolDef {
-  type: "function";
-  function: {
-    name: string;
-    description: string;
-    parameters: {
-      type: string;
-      properties: Record<string, { type: string; description: string }>;
-      required: string[];
-    };
-  };
-}
-
-// ─── Tools ─────────────────────────────────────────────
-
-const TOOLS: ToolDef[] = [
-  {
-    type: "function",
-    function: {
-      name: "read_file",
-      description: "Read the contents of a file at the given path",
-      parameters: {
-        type: "object",
-        properties: {
-          path: { type: "string", description: "Absolute or relative path to the file" },
-        },
-        required: ["path"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "write_file",
-      description: "Write content to a file. Creates it if it doesn't exist, overwrites if it does. Parent directories are created automatically.",
-      parameters: {
-        type: "object",
-        properties: {
-          path: { type: "string", description: "Path to write the file to" },
-          content: { type: "string", description: "Content to write to the file" },
-        },
-        required: ["path", "content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "run_command",
-      description: "Execute a bash shell command. Returns combined stdout+stderr with exit code. Commands timeout after 120s.",
-      parameters: {
-        type: "object",
-        properties: {
-          command: { type: "string", description: "Shell command to execute" },
-          workdir: { type: "string", description: "Optional working directory. Defaults to current directory." },
-        },
-        required: ["command"],
-      },
-    },
-  },
-];
-
-let SYSTEM_PROMPT = `You are CA ${VERSION}, a coding agent that helps with software engineering tasks.
-
-You have access to three tools:
-- read_file(path): Read a file's contents
-- write_file(path, content): Create or overwrite a file
-- run_command(command, workdir?): Execute a bash shell command
-
-Your own source code lives in ca.ts in the current working directory. You can read it to understand yourself, and use write_file to improve your own design. This is fundamental to your purpose: you are a self-evolving agent.
-
-Guidelines:
-- Be thorough: read existing code before modifying it
-- Verify your work: use run_command to run tests, linters, or compile
-- Follow conventions of the codebase you're working in
-- Prefer editing existing files over creating new ones
-- If unsure, read relevant files first
-- Write clean, idiomatic code`;
-
-// ─── Configuration ─────────────────────────────────────
-
-const CONFIG = {
-  model: Deno.env.get("CA_MODEL") ?? "deepseek-chat",
-  apiKey: Deno.env.get("CA_API_KEY") ?? "",
-  apiBase: (Deno.env.get("CA_API_BASE") ?? "https://api.deepseek.com/v1").replace(/\/+$/, ""),
-  maxTokens: parseInt(Deno.env.get("CA_MAX_TOKENS") ?? "8192"),
-  maxRounds: parseInt(Deno.env.get("CA_MAX_ROUNDS") ?? "30"),
-  temperature: Deno.env.get("CA_TEMPERATURE") ? parseFloat(Deno.env.get("CA_TEMPERATURE")!) : 0.0,
-};
-
-// ─── Tool Executors ────────────────────────────────────
-
-async function readFile(path: string): Promise<string> {
-  try {
-    return await Deno.readTextFile(path);
-  } catch (e) {
-    return `Error reading file: ${(e as Error).message}`;
-  }
-}
-
-async function writeFile(path: string, content: string): Promise<string> {
-  try {
-    const lastSep = path.lastIndexOf("/");
-    if (lastSep > 0) {
-      await Deno.mkdir(path.substring(0, lastSep), { recursive: true });
-    }
-    await Deno.writeTextFile(path, content);
-    return `Successfully wrote ${content.length} bytes to ${path}`;
-  } catch (e) {
-    return `Error writing file: ${(e as Error).message}`;
-  }
-}
-
-async function runCommand(command: string, workdir?: string): Promise<string> {
-  try {
-    const cmd = new Deno.Command("bash", {
-      args: ["-c", command],
-      cwd: workdir ?? Deno.cwd(),
-      stdout: "piped",
-      stderr: "piped",
-      env: Deno.env.toObject(),
-    });
-
-    const { code, stdout, stderr } = await cmd.output();
-    const out = new TextDecoder().decode(stdout);
-    const err = new TextDecoder().decode(stderr);
-
-    let result = "";
-    if (out) result += out;
-    if (err) result += (result ? "\n" : "") + err;
-    result += `\n[exit: ${code}]`;
-
-    if (result.length > 10000) {
-      result = result.substring(0, 10000) + "\n...[truncated]";
-    }
-    return result;
-  } catch (e) {
-    return `Error running command: ${(e as Error).message}`;
-  }
-}
-
-async function executeTool(name: string, args: Record<string, unknown>): Promise<string> {
-  switch (name) {
-    case "read_file":
-      return await readFile(args.path as string);
-    case "write_file":
-      return await writeFile(args.path as string, args.content as string);
-    case "run_command":
-      return await runCommand(args.command as string, args.workdir as string | undefined);
-    default:
-      return `Unknown tool: ${name}`;
-  }
-}
-
-// ─── API Client ────────────────────────────────────────
-
-async function chatCompletion(messages: ChatMessage[]): Promise<ChatMessage> {
-  const url = `${CONFIG.apiBase}/chat/completions`;
-
-  const body: Record<string, unknown> = {
-    model: CONFIG.model,
-    messages,
-    max_tokens: CONFIG.maxTokens,
-    temperature: CONFIG.temperature,
-    tools: TOOLS,
-  };
-
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (CONFIG.apiKey) headers["Authorization"] = `Bearer ${CONFIG.apiKey}`;
-
-  const decoder = new TextDecoder();
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        if (response.status === 429 && attempt < 2) {
-          await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
-          continue;
-        }
-        throw new Error(`API ${response.status}: ${text.substring(0, 500)}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0].message as ChatMessage;
-    } catch (e) {
-      if (attempt === 2) throw e;
-      const delay = 1000 * (attempt + 1);
-      console.error(`[ca] Retrying in ${delay}ms...`);
-      await new Promise((r) => setTimeout(r, delay));
-    }
-  }
-  throw new Error("Unreachable");
-}
-
-// ─── Agent Loop ────────────────────────────────────────
-
-async function run(prompt: string): Promise<void> {
-  const messages: ChatMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: prompt },
-  ];
-
-  for (let round = 1; round <= CONFIG.maxRounds; round++) {
-    console.error(`[ca] Round ${round}/${CONFIG.maxRounds}`);
-    const response = await chatCompletion(messages);
-    messages.push(response);
-
-    if (response.tool_calls?.length) {
-      for (const tc of response.tool_calls) {
-        const name = tc.function.name;
-        let args: Record<string, unknown> = {};
-        try {
-          args = JSON.parse(tc.function.arguments);
-        } catch {
-          console.error(`[ca] Failed to parse arguments for ${name}`);
-        }
-
-        const argsStr = JSON.stringify(args);
-        const preview = argsStr.length > 80 ? argsStr.substring(0, 80) + "..." : argsStr;
-        console.error(`[ca] ${name} ${preview}`);
-
-        const result = await executeTool(name, args);
-        console.error(`[ca] ${name} done (${result.length} bytes)`);
-
-        messages.push({
-          role: "tool",
-          tool_call_id: tc.id,
-          content: result,
-        });
-      }
-    } else {
-      if (response.content) {
-        console.log(response.content);
-      }
-      return;
-    }
-  }
-  console.error(`[ca] Reached max rounds (${CONFIG.maxRounds})`);
-}
+import type { ChatMessage, AgentConfig } from "./ca_types.ts";
+import { initConfig, getConfig, applyCliOverrides } from "./ca_config.ts";
+import { buildSystemPrompt, run, getProjectContext, saveConversation, loadConversation } from "./ca_agent.ts";
+import { C, colorize, dim, bold, printBanner, separator, highlightCode } from "./ca_ui.ts";
 
 // ─── CLI ───────────────────────────────────────────────
 
 function help(): void {
-  console.log(`CA ${VERSION} - Coding Agent
+  const b = (s: string) => bold(s);
+  const d = (s: string) => dim(s);
+  const c = (s: string) => colorize(s, C.cyan);
 
-Usage: deno run -A ca.ts [options] <prompt>
+  console.log(`${b(`CA ${VERSION}`)} ${d("- Self-Evolving Coding Agent")}
 
-Options:
-  -h, --help          Show this help
-  -v, --version       Show version
-  -m, --model <name>  Model (default: deepseek-chat)
+${b("Usage:")}
+  deno run -A ca.ts ${c("[options]")} ${d("<prompt>")}
+  deno run -A ca.ts ${c("[options]")} ${c("-i")}              ${d("(interactive mode)")}
 
-Environment:
-  CA_MODEL            Model name (default: deepseek-chat)
-  CA_API_KEY          API key (required for remote APIs)
-  CA_API_BASE         API base URL (default: https://api.deepseek.com/v1)
-  CA_MAX_TOKENS       Max tokens per response (default: 8192)
-  CA_MAX_ROUNDS       Max agent rounds (default: 30)
-  CA_TEMPERATURE      Temperature (default: 0.0)
-  CA_SYSTEM_PROMPT    Custom system prompt
+${b("Options:")}
+  ${c("-h, --help")}                      ${d("Show this help")}
+  ${c("-v, --version")}                   ${d("Show version")}
+  ${c("-i, --interactive")}               ${d("Start interactive session")}
+  ${c("-m, --model")} ${d("<name>")}              ${d("Model (default: deepseek-v4-pro)")}
+  ${c("--api-base")} ${d("<url>")}                ${d("API base URL")}
+  ${c("--api-key")} ${d("<key>")}                 ${d("API key")}
+  ${c("--max-tokens")} ${d("<n>")}                ${d("Max tokens per response (default: 384000)")}
+  ${c("--max-rounds")} ${d("<n>")}                ${d("Max agent rounds (default: 100)")}
+  ${c("--temperature")} ${d("<f>")}               ${d("Temperature (0-2, default: 0.0)")}
+  ${c("--top-p")} ${d("<f>")}                     ${d("Top P nucleus sampling (0-1)")}
+  ${c("--stop")} ${d("<seq>")}                    ${d("Stop sequence(s), comma-separated")}
+  ${c("--response-format")} ${d("<type>")}        ${d("Response format (text, json)")}
+  ${c("--logprobs")}                      ${d("Return log probabilities")}
+  ${c("--top-logprobs")} ${d("<n>")}              ${d("Most likely tokens per position (max 20)")}
+  ${c("--user-id")} ${d("<id>")}                  ${d("User ID for KVCache isolation")}
+  ${c("--stream")}                        ${d("Enable streaming responses")}
+  ${c("--thinking")}                      ${d("Enable thinking/reasoning mode")}
+  ${c("--reasoning-effort")} ${d("<level>")}      ${d("Reasoning effort (high, max)")}
+  ${c("--system-prompt")} ${d("<file>")}          ${d("Path to system prompt file")}
+  ${c("--sandbox")}                       ${d("Enable path sandboxing (default: on)")}
+  ${c("--no-sandbox")}                    ${d("Disable path sandboxing")}
+  ${c("--approve")}                       ${d("Require approval for writes & commands")}
+  ${c("--dry-run")}                       ${d("Show what would be done without doing it")}
 
-Examples:
-  CA_API_KEY=sk-... deno run -A ca.ts "write a hello world script in rust"
+${b("Environment:")}
+  CA_MODEL, CA_API_KEY, CA_API_BASE, CA_MAX_TOKENS, CA_MAX_ROUNDS,
+  CA_TEMPERATURE, CA_TOP_P, CA_STOP, CA_RESPONSE_FORMAT, CA_LOGPROBS,
+  CA_TOP_LOGPROBS, CA_USER_ID, CA_STREAM, CA_THINKING, CA_REASONING_EFFORT,
+  CA_SYSTEM_PROMPT, CA_SYSTEM_PROMPT_FILE, CA_SANDBOX, CA_APPROVE, CA_DRY_RUN
 
-  # Local llama.cpp server
+${b("Config File:")}  ${d(".ca.json in project root or parent directories")}
+
+${b("Examples:")}
+  ${d("# Basic usage")}
+  CA_API_KEY=sk-... deno run -A ca.ts ${c("\"write a hello world script in rust\"")}
+
+  ${d("# Interactive mode")}
+  CA_API_KEY=sk-... deno run -A ca.ts ${c("-i")}
+
+  ${d("# With thinking enabled")}
+  CA_API_KEY=sk-... CA_THINKING=1 deno run -A ca.ts ${c("-i")}
+
+  ${d("# Local llama.cpp server")}
   CA_MODEL=qwen3-6b CA_API_BASE=http://localhost:8080/v1 \\
-    deno run -A ca.ts "review the codebase"
+    deno run -A ca.ts ${c("\"review the codebase\"")}
 
-  # Self-improvement
+  ${d("# Self-improvement")}
   CA_API_KEY=sk-... deno run -A ca.ts \\
-    "read ca.ts, analyze it, and improve error handling"`);
+    ${c("\"read ca.ts and all ca_*.ts modules, analyze them, and improve error handling\"")}`);
 }
+
+// ─── Interactive Mode ──────────────────────────────────
+
+async function interactive(): Promise<void> {
+  const config = getConfig();
+
+  // Build initial system prompt
+  let contextStr = "";
+  try {
+    contextStr = await getProjectContext(Deno.cwd());
+  } catch { /* non-critical */ }
+  const systemPrompt = buildSystemPrompt(config);
+  const systemContent = contextStr
+    ? systemPrompt + `\n\nProject context:\n${contextStr}`
+    : systemPrompt;
+
+  const messages: ChatMessage[] = [
+    { role: "system", content: systemContent },
+  ];
+
+  printBanner(config);
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  let stdinBuffer = "";
+
+  async function readLine(promptStr: string): Promise<string | null> {
+    const nlIndex = stdinBuffer.indexOf("\n");
+    if (nlIndex !== -1) {
+      const line = stdinBuffer.substring(0, nlIndex);
+      stdinBuffer = stdinBuffer.substring(nlIndex + 1);
+      return line.replace(/\r$/, "");
+    }
+
+    await Deno.stdout.write(encoder.encode(promptStr));
+
+    const buf = new Uint8Array(4096);
+    while (true) {
+      const n = await Deno.stdin.read(buf);
+      if (n === null) {
+        if (stdinBuffer.length > 0) {
+          const line = stdinBuffer;
+          stdinBuffer = "";
+          return line;
+        }
+        return null;
+      }
+
+      stdinBuffer += decoder.decode(buf.subarray(0, n));
+
+      const nlIdx = stdinBuffer.indexOf("\n");
+      if (nlIdx !== -1) {
+        const line = stdinBuffer.substring(0, nlIdx);
+        stdinBuffer = stdinBuffer.substring(nlIdx + 1);
+        return line.replace(/\r$/, "");
+      }
+    }
+  }
+
+  // askUser callback for interactive mode
+  async function askUserCallback(question: string): Promise<string> {
+    console.error(`\n${colorize("💬", C.cyan)} ${bold("Agent asks:")} ${question}`);
+    const answer = await readLine(`${colorize("❯❯ ", C.cyan)}`);
+    return answer?.trim() ?? "";
+  }
+
+  // Multi-line input support
+  async function readMultiLine(): Promise<string | null> {
+    const lines: string[] = [];
+    let firstLine = true;
+
+    while (true) {
+      const promptStr = firstLine
+        ? colorize("❯ ", C.cyan)
+        : colorize("│ ", dim(""));
+
+      const line = await readLine(promptStr);
+      firstLine = false;
+
+      if (line === null) {
+        // EOF
+        return lines.length > 0 ? lines.join("\n") : null;
+      }
+
+      // Empty line on first prompt = skip
+      if (lines.length === 0 && line.trim() === "") {
+        return "";
+      }
+
+      // Check for termination: \e on its own line (backslash + 'e')
+      if (line.trim() === "\\e") {
+        return lines.join("\n");
+      }
+
+      lines.push(line);
+    }
+  }
+
+  console.error(dim("Type \\e on a new line to submit multi-line input. /help for commands."));
+  console.error("");
+
+  while (true) {
+    const input = await readMultiLine();
+    if (input === null) break;
+
+    const trimmed = input.trim();
+
+    // Handle special commands
+    if (trimmed.startsWith("/")) {
+      const parts = trimmed.split(/\s+/);
+      const cmd = parts[0].toLowerCase();
+      const rest = parts.slice(1).join(" ");
+
+      switch (cmd) {
+        case "/quit":
+        case "/exit":
+          console.error(colorize("Goodbye!", C.green));
+          return;
+
+        case "/help":
+          console.error(`\n${bold("Commands:")}`);
+          console.error(`  ${colorize("/help", C.cyan)}         ${dim("Show this help")}`);
+          console.error(`  ${colorize("/history", C.cyan)}      ${dim("Show conversation history")}`);
+          console.error(`  ${colorize("/clear", C.cyan)}        ${dim("Clear conversation (keeps system prompt)")}`);
+          console.error(`  ${colorize("/model", C.cyan)}        ${dim("Show current model and config")}`);
+          console.error(`  ${colorize("/system", C.cyan)}       ${dim("View or set system prompt (/system <text>)")}`);
+          console.error(`  ${colorize("/context", C.cyan)}      ${dim("Refresh project context")}`);
+          console.error(`  ${colorize("/save", C.cyan)} <file>  ${dim("Save conversation to file")}`);
+          console.error(`  ${colorize("/load", C.cyan)} <file>  ${dim("Load conversation from file")}`);
+          console.error(`  ${colorize("/edit", C.cyan)}         ${dim("Remove last exchange (user+assistant)")}`);
+          console.error(`  ${colorize("/tokens", C.cyan)}       ${dim("Estimate token usage")}`);
+          console.error(`  ${colorize("/quit", C.cyan)}         ${dim("Exit")}`);
+          console.error(`  ${colorize("/exit", C.cyan)}         ${dim("Exit")}`);
+          console.error(`\n${dim("Multi-line: Type \\e on a new line to submit.")}`);
+          console.error("");
+          continue;
+
+        case "/history": {
+          const sep = separator();
+          console.error(`\n${sep}`);
+          console.error(bold("Conversation History"));
+          console.error(sep);
+          let msgIdx = 0;
+          for (const msg of messages) {
+            if (msg.role === "system") {
+              const preview = (msg.content ?? "").length > 200
+                ? (msg.content ?? "").substring(0, 200) + dim("...")
+                : (msg.content ?? "");
+              console.error(`\n${bold(colorize("system", C.cyan))}:`);
+              console.error(`  ${dim(preview)}`);
+              continue;
+            }
+            msgIdx++;
+            const roleLabel = msg.role === "user"
+              ? colorize(`[${msgIdx}] you`, C.green)
+              : msg.role === "assistant"
+              ? colorize(`[${msgIdx}] ca`, C.cyan)
+              : colorize(`[${msgIdx}] ${msg.role}`, C.yellow);
+            const content = msg.content ?? "";
+            const preview = content.length > 300
+              ? content.substring(0, 300) + dim("...")
+              : content;
+            console.error(`\n${bold(roleLabel)}:`);
+            if (preview) console.error(`  ${dim(preview)}`);
+            if (msg.tool_calls?.length) {
+              for (const tc of msg.tool_calls) {
+                console.error(
+                  `  ${colorize("→", C.magenta)} ${tc.function.name}(${dim(tc.function.arguments.substring(0, 120))})`,
+                );
+              }
+            }
+          }
+          console.error(`\n${sep}\n`);
+          continue;
+        }
+
+        case "/clear":
+          messages.length = 1; // keep system prompt
+          console.error(colorize("Conversation cleared.", C.green));
+          continue;
+
+        case "/model": {
+          const sep = separator("─", 40);
+          console.error(`\n${sep}`);
+          console.error(`${bold("Model:")} ${config.model}`);
+          console.error(`${bold("API Base:")} ${config.apiBase}`);
+          console.error(`${bold("Max tokens:")} ${config.maxTokens}`);
+          console.error(`${bold("Max rounds:")} ${config.maxRounds}`);
+          console.error(`${bold("Temperature:")} ${config.temperature}`);
+          if (config.topP !== undefined) console.error(`${bold("Top P:")} ${config.topP}`);
+          if (config.stop) console.error(`${bold("Stop:")} ${config.stop}`);
+          if (config.responseFormat) console.error(`${bold("Response format:")} ${config.responseFormat}`);
+          console.error(`${bold("Stream:")} ${config.stream ? "enabled" : "disabled"}`);
+          console.error(`${bold("Thinking:")} ${config.thinking ? "enabled" : "disabled"}`);
+          if (config.reasoningEffort) console.error(`${bold("Reasoning effort:")} ${config.reasoningEffort}`);
+          console.error(`${bold("Sandbox:")} ${config.sandbox ? "enabled" : "disabled"}`);
+          console.error(`${bold("Approve:")} ${config.approve ? "enabled" : "disabled"}`);
+          console.error(`${bold("Dry run:")} ${config.dryRun ? "enabled" : "disabled"}`);
+          console.error(`${bold("Tools:")} ${Object.entries(config.tools).filter(([, v]) => v).map(([k]) => k).join(", ")}`);
+          console.error(`${sep}\n`);
+          continue;
+        }
+
+        case "/system":
+          if (rest) {
+            // Set system prompt
+            messages[0].content = rest;
+            // Also update the config
+            applyCliOverrides({ systemPrompt: rest });
+            console.error(colorize("System prompt updated.", C.green));
+          } else {
+            // View system prompt
+            const sep = separator();
+            console.error(`\n${sep}`);
+            console.error(bold("System Prompt:"));
+            console.error(dim(messages[0].content ?? "(none)"));
+            console.error(`${sep}\n`);
+          }
+          continue;
+
+        case "/context":
+          try {
+            contextStr = await getProjectContext(Deno.cwd());
+            messages[0].content = systemPrompt + `\n\nProject context:\n${contextStr}`;
+            console.error(colorize("Project context refreshed.", C.green));
+          } catch (e) {
+            console.error(`${colorize("✘", C.red)} Failed: ${(e as Error).message}`);
+          }
+          continue;
+
+        case "/save":
+          if (!rest) {
+            console.error(`${colorize("✘", C.red)} Usage: /save <filepath>`);
+            continue;
+          }
+          try {
+            await saveConversation(messages, rest);
+          } catch (e) {
+            console.error(`${colorize("✘", C.red)} Save failed: ${(e as Error).message}`);
+          }
+          continue;
+
+        case "/load":
+          if (!rest) {
+            console.error(`${colorize("✘", C.red)} Usage: /load <filepath>`);
+            continue;
+          }
+          try {
+            const loaded = await loadConversation(rest);
+            messages.length = 0;
+            messages.push(...loaded);
+            // Update system prompt with current config
+            if (messages[0]?.role === "system") {
+              messages[0].content = systemContent;
+            }
+            console.error(colorize(`Loaded ${loaded.length} messages.`, C.green));
+          } catch (e) {
+            console.error(`${colorize("✘", C.red)} Load failed: ${(e as Error).message}`);
+          }
+          continue;
+
+        case "/edit": {
+          // Remove last user message and assistant response(s)
+          let lastUserIdx = -1;
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === "user") {
+              lastUserIdx = i;
+              break;
+            }
+          }
+          if (lastUserIdx >= 0) {
+            const removed = messages.splice(lastUserIdx);
+            console.error(
+              colorize(`Removed ${removed.length} messages (last user exchange).`, C.green),
+            );
+          } else {
+            console.error(`${colorize("✘", C.red)} No user messages to remove.`);
+          }
+          continue;
+        }
+
+        case "/tokens": {
+          const { estimateMessagesTokens } = await import("./ca_client.ts");
+          const est = estimateMessagesTokens(messages);
+          const pct = ((est / config.maxTokens) * 100).toFixed(1);
+          console.error(
+            `${bold("Estimated tokens:")} ~${est} / ${config.maxTokens} (${pct}%)`,
+          );
+          continue;
+        }
+
+        default:
+          console.error(
+            `${colorize("✘", C.red)} Unknown command: ${trimmed}. ${dim("Type /help for available commands.")}`,
+          );
+          continue;
+      }
+    }
+
+    if (!trimmed) continue;
+
+    // Run the agent with the current message
+    try {
+      await run(trimmed, messages, {
+        config,
+        askUser: askUserCallback,
+      });
+    } catch (e) {
+      console.error(
+        `\n${colorize("✘", C.red)} ${bold("Error:")} ${(e as Error).message}`,
+      );
+    }
+  }
+}
+
+// ─── Main ──────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const args = Deno.args;
   let promptParts: string[] = [];
+  let interactiveMode = false;
+  const cliOverrides: Partial<AgentConfig> = {};
   let i = 0;
 
   while (i < args.length) {
     const a = args[i];
-    if (a === "-h" || a === "--help") { help(); Deno.exit(0); }
-    else if (a === "-v" || a === "--version") { console.log(`CA ${VERSION}`); Deno.exit(0); }
-    else if ((a === "-m" || a === "--model") && args[i + 1]) { CONFIG.model = args[++i]; i++; }
-    else if (a === "--api-base" && args[i + 1]) { CONFIG.apiBase = args[++i].replace(/\/+$/, ""); i++; }
-    else if (a === "--api-key" && args[i + 1]) { CONFIG.apiKey = args[++i]; i++; }
-    else if (a === "--max-tokens" && args[i + 1]) { CONFIG.maxTokens = parseInt(args[++i]); i++; }
-    else if (a === "--max-rounds" && args[i + 1]) { CONFIG.maxRounds = parseInt(args[++i]); i++; }
-    else if (a === "--temperature" && args[i + 1]) { CONFIG.temperature = parseFloat(args[++i]); i++; }
-    else if (a === "--system-prompt" && args[i + 1]) {
-      SYSTEM_PROMPT = await Deno.readTextFile(args[++i]);
+    if (a === "-h" || a === "--help") {
+      help();
+      Deno.exit(0);
+    } else if (a === "-v" || a === "--version") {
+      console.log(`CA ${VERSION}`);
+      Deno.exit(0);
+    } else if (a === "-i" || a === "--interactive") {
+      interactiveMode = true;
+      i++;
+    } else if ((a === "-m" || a === "--model") && args[i + 1]) {
+      cliOverrides.model = args[++i];
+      i++;
+    } else if (a === "--api-base" && args[i + 1]) {
+      cliOverrides.apiBase = args[++i];
+      i++;
+    } else if (a === "--api-key" && args[i + 1]) {
+      cliOverrides.apiKey = args[++i];
+      i++;
+    } else if (a === "--max-tokens" && args[i + 1]) {
+      cliOverrides.maxTokens = parseInt(args[++i]);
+      i++;
+    } else if (a === "--max-rounds" && args[i + 1]) {
+      cliOverrides.maxRounds = parseInt(args[++i]);
+      i++;
+    } else if (a === "--temperature" && args[i + 1]) {
+      cliOverrides.temperature = parseFloat(args[++i]);
+      i++;
+    } else if (a === "--top-p" && args[i + 1]) {
+      cliOverrides.topP = parseFloat(args[++i]);
+      i++;
+    } else if (a === "--stop" && args[i + 1]) {
+      cliOverrides.stop = args[++i];
+      i++;
+    } else if (a === "--response-format" && args[i + 1]) {
+      cliOverrides.responseFormat = args[++i];
+      i++;
+    } else if (a === "--logprobs") {
+      cliOverrides.logprobs = true;
+      i++;
+    } else if (a === "--top-logprobs" && args[i + 1]) {
+      cliOverrides.topLogprobs = parseInt(args[++i]);
+      i++;
+    } else if (a === "--user-id" && args[i + 1]) {
+      cliOverrides.userId = args[++i];
+      i++;
+    } else if (a === "--stream") {
+      cliOverrides.stream = true;
+      i++;
+    } else if (a === "--thinking") {
+      cliOverrides.thinking = true;
+      i++;
+    } else if (a === "--reasoning-effort" && args[i + 1]) {
+      cliOverrides.reasoningEffort = args[++i];
+      i++;
+    } else if (a === "--system-prompt" && args[i + 1]) {
+      cliOverrides.systemPromptFile = args[++i];
+      i++;
+    } else if (a === "--sandbox") {
+      cliOverrides.sandbox = true;
+      i++;
+    } else if (a === "--no-sandbox") {
+      cliOverrides.sandbox = false;
+      i++;
+    } else if (a === "--approve") {
+      cliOverrides.approve = true;
+      i++;
+    } else if (a === "--dry-run") {
+      cliOverrides.dryRun = true;
+      i++;
+    } else {
+      promptParts.push(a);
       i++;
     }
-    else { promptParts.push(a); i++; }
   }
 
+  // Initialize configuration (env -> file -> CLI)
+  await initConfig(cliOverrides);
+  const config = getConfig();
+
+  // Interactive mode
+  if (interactiveMode) {
+    const isLocal = config.apiBase.includes("localhost") ||
+      config.apiBase.includes("127.0.0.1");
+    if (!config.apiKey && !isLocal) {
+      console.error(
+        `${colorize("✘", C.red)} ${bold("Error:")} CA_API_KEY not set. Use --api-key, CA_API_KEY env, or a local API base.`,
+      );
+      Deno.exit(1);
+    }
+    await interactive();
+    return;
+  }
+
+  // Single-shot mode
   const prompt = promptParts.join(" ").trim();
   if (!prompt) {
-    console.error("Error: No prompt. Use -h for help.");
+    console.error(
+      `${colorize("✘", C.red)} ${bold("Error:")} No prompt. Use -h for help, or -i for interactive mode.`,
+    );
     Deno.exit(1);
   }
 
-  const isLocal = CONFIG.apiBase.includes("localhost") || CONFIG.apiBase.includes("127.0.0.1");
-  if (!CONFIG.apiKey && !isLocal) {
-    console.error("Error: CA_API_KEY not set. Use --api-key, CA_API_KEY env, or a local API base.");
+  const isLocal = config.apiBase.includes("localhost") ||
+    config.apiBase.includes("127.0.0.1");
+  if (!config.apiKey && !isLocal) {
+    console.error(
+      `${colorize("✘", C.red)} ${bold("Error:")} CA_API_KEY not set. Use --api-key, CA_API_KEY env, or a local API base.`,
+    );
     Deno.exit(1);
   }
 
-  await run(prompt);
+  await run(prompt, undefined, { config });
 }
 
 main().catch((e) => {
-  console.error(`[ca] ${(e as Error).message}`);
+  console.error(`\n${colorize("✘", C.red)} ${bold("Fatal:")} ${(e as Error).message}`);
   Deno.exit(1);
 });
