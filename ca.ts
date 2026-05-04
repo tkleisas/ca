@@ -10,6 +10,7 @@ import { C, colorize, dim, bold, printBanner, separator, highlightCode } from ".
 // ─── Global State ──────────────────────────────────────
 
 let shuttingDown = false;
+let abortController: AbortController | null = null;
 
 function setupSignalHandlers(): void {
   const handler = () => {
@@ -20,6 +21,9 @@ function setupSignalHandlers(): void {
     shuttingDown = true;
     console.error(`\n${colorize("⚠", C.yellow)} ${bold("Interrupted. Finishing current operation...")}`);
     console.error(dim("  Press Ctrl+C again to force exit."));
+    if (abortController) {
+      abortController.abort();
+    }
   };
   Deno.addSignalListener("SIGINT", handler);
   Deno.addSignalListener("SIGTERM", handler);
