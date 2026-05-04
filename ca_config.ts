@@ -147,6 +147,7 @@ export function applyCliOverrides(overrides: Partial<AgentConfig>): void {
   if (overrides.apiBase !== undefined) _config.apiBase = overrides.apiBase.replace(/\/+$/, "");
   if (overrides.maxTokens !== undefined) _config.maxTokens = overrides.maxTokens;
   if (overrides.maxRounds !== undefined) _config.maxRounds = overrides.maxRounds;
+  if (overrides.maxRetries !== undefined) _config.maxRetries = overrides.maxRetries;
   if (overrides.temperature !== undefined) _config.temperature = overrides.temperature;
   if (overrides.topP !== undefined) _config.topP = overrides.topP;
   if (overrides.stop !== undefined) _config.stop = overrides.stop;
