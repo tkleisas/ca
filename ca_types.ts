@@ -54,6 +54,7 @@ export interface AgentConfig {
   apiBase: string;
   maxTokens: number;
   maxRounds: number;
+  maxRetries: number;
   temperature: number;
   topP?: number;
   stop: string;
