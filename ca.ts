@@ -341,8 +341,8 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
 
         case "/context":
           try {
-            contextStr = await getProjectContext(Deno.cwd());
-            messages[0].content = systemPrompt + `\n\nProject context:\n${contextStr}`;
+            const newSystemContent = await buildSystemContent(config, Deno.cwd());
+            messages[0].content = newSystemContent;
             console.error(colorize("Project context refreshed.", C.green));
           } catch (e) {
             console.error(`${colorize("✘", C.red)} Failed: ${(e as Error).message}`);
