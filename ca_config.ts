@@ -9,6 +9,7 @@ const DEFAULTS: AgentConfig = {
   apiBase: "https://api.deepseek.com/v1",
   maxTokens: 384000,
   maxRounds: 100,
+  maxRetries: 3,
   temperature: 0.0,
   topP: undefined,
   stop: "",
