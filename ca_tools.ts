@@ -280,13 +280,32 @@ async function execRunCommand(command: string, workdir: string | undefined, opts
 
   try {
     const cmd = new Deno.Command("bash", { args: ["-c", command], cwd, stdout: "piped", stderr: "piped", env: Deno.env.toObject() });
-    const { code, stdout, stderr } = await cmd.output();
+    const proc = cmd.spawn();
+
+    // Enforce 120s timeout
+    const timeoutMs = 120_000;
+    const timeout = setTimeout(async () => {
+      try { proc.kill("SIGTERM"); } catch { /* already dead */ }
+    }, timeoutMs);
+
+    let output: Deno.CommandOutput;
+    try {
+      output = await proc.output();
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const { code, stdout, stderr } = output;
     const out = new TextDecoder().decode(stdout);
     const err = new TextDecoder().decode(stderr);
     let result = "";
     if (out) result += out;
     if (err) result += (result ? "\n" : "") + err;
-    result += `\n[exit: ${code}]`;
+    if (code === null) {
+      result += `\n[timeout after ${timeoutMs / 1000}s]`;
+    } else {
+      result += `\n[exit: ${code}]`;
+    }
     if (result.length > 10000) result = result.substring(0, 10000) + "\n...[truncated]";
     return { output: result, error: code !== 0 };
   } catch (e) {
