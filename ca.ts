@@ -241,10 +241,14 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
           console.error(`\n${colorize("🔄", C.cyan)} ${bold("Running self-upgrade...")}`);
           const upgradePrompt = "You are asked to upgrade yourself. Read all ca_*.ts modules, analyze the codebase for improvements, implement them, run deno check and deno test to verify, and then call restart_self with confirm=true. Focus on: reducing code duplication, improving error handling, adding missing features, and making the code more robust. Be thorough.";
           try {
-            await run(upgradePrompt, messages, {
+            const result = await run(upgradePrompt, messages, {
               config,
               askUser: askUserCallback,
             });
+            messages = result.messages;
+            if (result.needsRestart) {
+              await performRestart(`${Deno.cwd()}/.ca_resume.json`);
+            }
           } catch (e) {
             console.error(`\n${colorize("✘", C.red)} ${bold("Upgrade error:")} ${(e as Error).message}`);
           }
