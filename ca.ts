@@ -453,6 +453,9 @@ async function main(): Promise<void> {
     } else if (a === "--max-rounds" && args[i + 1]) {
       cliOverrides.maxRounds = parseInt(args[++i]);
       i++;
+    } else if (a === "--max-retries" && args[i + 1]) {
+      cliOverrides.maxRetries = parseInt(args[++i]);
+      i++;
     } else if (a === "--temperature" && args[i + 1]) {
       cliOverrides.temperature = parseFloat(args[++i]);
       i++;
