@@ -499,6 +499,8 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
       console.error(
         `\n${colorize("✘", C.red)} ${bold("Error:")} ${(e as Error).message}`,
       );
+    } finally {
+      abortController = null;
     }
   }
 }
