@@ -77,7 +77,7 @@ ${b("Examples:")}
 
 // ─── Interactive Mode ──────────────────────────────────
 
-async function interactive(): Promise<void> {
+async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
   const config = getConfig();
 
   // Build initial system prompt
@@ -90,9 +90,18 @@ async function interactive(): Promise<void> {
     ? systemPrompt + `\n\nProject context:\n${contextStr}`
     : systemPrompt;
 
-  const messages: ChatMessage[] = [
-    { role: "system", content: systemContent },
-  ];
+  let messages: ChatMessage[];
+  if (existingMessages) {
+    messages = existingMessages;
+    // Update system prompt with current config
+    if (messages[0]?.role === "system") {
+      messages[0].content = systemContent;
+    }
+  } else {
+    messages = [
+      { role: "system", content: systemContent },
+    ];
+  }
 
   printBanner(config);
 
