@@ -59,6 +59,17 @@ Guidelines:
 
 // ─── Project Context ───────────────────────────────────
 
+export async function buildSystemContent(config: AgentConfig, cwd: string): Promise<string> {
+  const systemPrompt = buildSystemPrompt(config);
+  let contextStr = "";
+  try {
+    contextStr = await getProjectContext(cwd);
+  } catch { /* non-critical */ }
+  return contextStr
+    ? systemPrompt + `\n\nProject context:\n${contextStr}`
+    : systemPrompt;
+}
+
 export async function getProjectContext(cwd: string): Promise<string> {
   const parts: string[] = [];
   parts.push(`Working directory: ${cwd}`);
