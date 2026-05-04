@@ -203,6 +203,7 @@ function applyConfig(partial: Partial<AgentConfig>): void {
   if (partial.apiBase !== undefined) _config.apiBase = partial.apiBase;
   if (partial.maxTokens !== undefined) _config.maxTokens = partial.maxTokens;
   if (partial.maxRounds !== undefined) _config.maxRounds = partial.maxRounds;
+  if (partial.maxRetries !== undefined) _config.maxRetries = partial.maxRetries;
   if (partial.temperature !== undefined) _config.temperature = partial.temperature;
   if (partial.topP !== undefined) _config.topP = partial.topP;
   if (partial.stop !== undefined) _config.stop = partial.stop;
