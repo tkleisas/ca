@@ -59,6 +59,7 @@ function loadEnv(): Partial<AgentConfig> {
   if (s("CA_API_BASE")) out.apiBase = s("CA_API_BASE")!.replace(/\/+$/, "");
   if (n("CA_MAX_TOKENS")) out.maxTokens = n("CA_MAX_TOKENS")!;
   if (n("CA_MAX_ROUNDS")) out.maxRounds = n("CA_MAX_ROUNDS")!;
+  if (n("CA_MAX_RETRIES")) out.maxRetries = n("CA_MAX_RETRIES")!;
   if (f("CA_TEMPERATURE") !== undefined) out.temperature = f("CA_TEMPERATURE")!;
   if (f("CA_TOP_P") !== undefined) out.topP = f("CA_TOP_P")!;
   if (s("CA_STOP")) out.stop = s("CA_STOP")!;
