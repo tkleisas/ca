@@ -152,6 +152,29 @@ export function applyCliOverrides(overrides: Partial<AgentConfig>): void {
 
 // ─── Initialize ────────────────────────────────────────
 
+export function validateConfig(config: AgentConfig): string[] {
+  const warnings: string[] = [];
+  if (config.temperature < 0 || config.temperature > 2) {
+    warnings.push(`Temperature ${config.temperature} is outside typical range 0-2`);
+  }
+  if (config.maxTokens < 100) {
+    warnings.push(`maxTokens (${config.maxTokens}) is very low`);
+  }
+  if (config.maxRounds < 1) {
+    warnings.push(`maxRounds (${config.maxRounds}) must be >= 1`);
+  }
+  if (config.maxRetries < 0) {
+    warnings.push(`maxRetries (${config.maxRetries}) must be >= 0`);
+  }
+  if (config.topP !== undefined && (config.topP < 0 || config.topP > 1)) {
+    warnings.push(`topP (${config.topP}) must be between 0 and 1`);
+  }
+  if (config.topLogprobs !== undefined && (config.topLogprobs < 0 || config.topLogprobs > 20)) {
+    warnings.push(`topLogprobs (${config.topLogprobs}) exceeds typical max of 20`);
+  }
+  return warnings;
+}
+
 export async function initConfig(cliOverrides: Partial<AgentConfig>): Promise<void> {
   // Load in priority order (later overrides earlier):
   // 1. Defaults
