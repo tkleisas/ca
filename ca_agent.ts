@@ -138,6 +138,7 @@ export async function getProjectContext(cwd: string): Promise<string> {
 export interface AgentOptions {
   config: AgentConfig;
   askUser?: AskUserCallback;
+  signal?: AbortSignal;
 }
 
 export async function run(
