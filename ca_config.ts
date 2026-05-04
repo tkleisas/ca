@@ -199,6 +199,12 @@ export async function initConfig(cliOverrides: Partial<AgentConfig>): Promise<vo
       console.error(`Warning: Could not read system prompt file: ${_config.systemPromptFile}`);
     }
   }
+
+  // 6. Validate
+  const warnings = validateConfig(_config);
+  for (const w of warnings) {
+    console.error(`Warning: ${w}`);
+  }
 }
 
 function applyConfig(partial: Partial<AgentConfig>): void {
