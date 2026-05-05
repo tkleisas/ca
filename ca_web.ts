@@ -106,6 +106,7 @@ export async function runWebAgent(
 
       // Build the final message
       response = { role: "assistant", content: accum.content || null };
+      if (accum.reasoning) response.reasoning_content = accum.reasoning;
       const toolCallsArr = [...accum.toolCalls.values()].filter((tc) => tc.id);
       if (toolCallsArr.length > 0) {
         response.tool_calls = toolCallsArr.map((tc) => ({
