@@ -172,6 +172,7 @@ Deno.test("buildToolDefs - respects disabled tools", () => {
       ask_user: false,
       apply_diff: false,
       restart_self: false,
+      test_web: false,
     },
   });
   const tools = buildToolDefs(config);
