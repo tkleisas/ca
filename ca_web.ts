@@ -1016,7 +1016,7 @@ function highlightCode(code, language) {
     // Strings
     html = html.replace(/(["'\\\`])(?:(?!\\1|\\\\|\\\\n|\\\\r|\\\\t)[^\\1])*\\1/g, '<span style="color:#a5d6ff">$&</span>');
     // Comments: // and #
-    html = html.replace(/(\/\/.*$|#.*$)/gm, '<span style="color:#8b949e;font-style:italic">$&</span>');
+    html = html.replace(/(\\/\\/.*$|#.*$)/gm, '<span style="color:#8b949e;font-style:italic">$&</span>');
     return html;
   }
 
