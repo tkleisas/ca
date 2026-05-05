@@ -707,14 +707,8 @@ async function main(): Promise<void> {
     }
   }
 
-  // Interactive mode
-  if (interactiveMode) {
-    ensureApiKey(config);
-    await interactive();
-    return;
-  }
-
   // Web UI mode — starts as non-blocking background task
+  // Must start before interactive/single-shot so both can coexist
   if (webMode) {
     ensureApiKey(config);
     console.error(`${colorize("🌐", C.cyan)} ${bold("Starting CA Web UI on http://localhost:" + webPort + " ...")}`);
@@ -723,6 +717,13 @@ async function main(): Promise<void> {
       console.error(`${colorize("✘", C.red)} Web server error: ${(e as Error).message}`);
     });
     // Don't return — fall through to interactive mode or single-shot below
+  }
+
+  // Interactive mode
+  if (interactiveMode) {
+    ensureApiKey(config);
+    await interactive();
+    return;
   }
 
   // If web mode is on and no explicit mode/prompt, default to interactive
