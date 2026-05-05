@@ -725,6 +725,11 @@ async function main(): Promise<void> {
     // Don't return — fall through to interactive mode or single-shot below
   }
 
+  // If web mode is on and no explicit mode/prompt, default to interactive
+  if (webMode && !interactiveMode && promptParts.length === 0) {
+    interactiveMode = true;
+  }
+
   // Single-shot mode
   const prompt = promptParts.join(" ").trim();
   if (!prompt) {
