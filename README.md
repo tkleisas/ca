@@ -31,7 +31,6 @@ Type \e on a new line to submit multi-line input. /help for commands.
 - **Web UI** — browser-based interface with file browser, file viewer, and Markdown rendering
 - **Self-evolving** — can read and modify its own source code in `ca.ts` and `ca_*.ts` modules
 - **Configurable** — `.ca.json` files, environment variables, and CLI flags
-- **Self-evolving** — can read and modify its own source code in `ca.ts` and `ca_*.ts` modules
 
 ## Installation
 
