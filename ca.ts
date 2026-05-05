@@ -469,7 +469,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
             const override: Partial<AgentConfig> = {};
             (override as Record<string, unknown>)[key] = on;
             applyCliOverrides(override);
-            (config as Record<string, unknown>)[key] = on;
+            (config as unknown as Record<string, unknown>)[key] = on;
             console.error(colorize(`${key} = ${on ? "on" : "off"}`, C.green));
           } else if ((numKeys as readonly string[]).includes(key)) {
             const num = parseFloat(val);
@@ -480,9 +480,9 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
             // temperature and topP are floats, others are ints
             const finalVal = (key === "temperature" || key === "topP") ? num : Math.floor(num);
             const override: Partial<AgentConfig> = {};
-            (override as Record<string, unknown>)[key] = finalVal;
+            (override as unknown as Record<string, unknown>)[key] = finalVal;
             applyCliOverrides(override);
-            (config as Record<string, unknown>)[key] = finalVal;
+            (config as unknown as Record<string, unknown>)[key] = finalVal;
             console.error(colorize(`${key} = ${finalVal}`, C.green));
           } else {
             console.error(`${colorize("✘", C.red)} Unknown key: ${key}`);
