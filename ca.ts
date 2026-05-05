@@ -99,6 +99,8 @@ ${b("Options:")}
   ${c("--no-auto-commit")}                ${d("Disable git auto-commit before writes")}
   ${c("--auto-commit")}                  ${d("Enable git auto-commit (default)")}
   ${c("--dry-run")}                       ${d("Show what would be done without doing it")}
+  ${c("--web")}                          ${d("Start web UI on localhost:9420")}
+  ${c("--web-port")} ${d("<port>")}              ${d("Web UI port (default: 9420)")}
 
 ${b("Environment:")}
   CA_MODEL, CA_API_KEY, CA_API_BASE, CA_MAX_TOKENS, CA_MAX_ROUNDS, CA_MAX_RETRIES,
