@@ -184,39 +184,6 @@ export async function runWebAgent(
   return { messages: msgs, needsRestart: false };
 }
 
-// ─── HTML Template ──────────────────────────────────────
-
-const HTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CA ${VERSION} — Web UI</title>
-<style>
-${CSS}
-</style>
-</head>
-<body>
-<div id="app">
-  <div id="sidebar">
-    <div id="sb-header">CA ${VERSION}</div>
-    <div id="sb-context"></div>
-    <div id="sb-stats"></div>
-  </div>
-  <div id="main">
-    <div id="messages"></div>
-    <div id="input-area">
-      <textarea id="input" rows="2" placeholder="Send a message… (Ctrl+Enter to send)"></textarea>
-      <button id="send-btn">Send</button>
-    </div>
-  </div>
-</div>
-<script>
-${JS}
-</script>
-</body>
-</html>`;
-
 // ─── CSS ─────────────────────────────────────────────────
 
 const CSS = `
