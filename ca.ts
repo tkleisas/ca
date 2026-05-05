@@ -685,7 +685,10 @@ async function main(): Promise<void> {
     Deno.exit(1);
   }
 
-  await run(prompt, undefined, { config });
+  const result = await run(prompt, undefined, { config });
+  if (result.needsRestart) {
+    await performRestart(`${Deno.cwd()}/.ca_resume.json`);
+  }
 }
 
 main().catch((e) => {
