@@ -251,7 +251,7 @@ export async function* chatCompletionStream(
 
       return;
     } catch (e) {
-      if (attempt === maxRetries - 1) {
+      if (attempt === maxRetries - 1 || !isRetryableError(e)) {
         yield { type: "error", error: (e as Error).message };
         return;
       }
