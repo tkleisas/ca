@@ -684,6 +684,38 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
                 await initSession();
               }, 500);
             }
+          } else if (data.type === "list_dir") {
+            const reqPath = (data.path as string) || Deno.cwd();
+            const safety = isPathSafe(reqPath, Deno.cwd(), config.sandbox);
+            if (!safety.safe) {
+              socket.send(JSON.stringify({ type: "error", message: `Path blocked: ${safety.reason}` }));
+              return;
+            }
+            const entries = await listDirEntries(reqPath);
+            // Resolve to a relative display path
+            const cwd = Deno.cwd();
+            const displayPath = reqPath === cwd ? "." : (reqPath.startsWith(cwd + "/") ? "./" + reqPath.substring(cwd.length + 1) : reqPath);
+            socket.send(JSON.stringify({ type: "dir_listing", path: displayPath, entries }));
+          } else if (data.type === "read_file") {
+            const reqPath = data.path as string;
+            if (!reqPath) {
+              socket.send(JSON.stringify({ type: "error", message: "No path provided" }));
+              return;
+            }
+            const safety = isPathSafe(reqPath, Deno.cwd(), config.sandbox);
+            if (!safety.safe) {
+              socket.send(JSON.stringify({ type: "error", message: `Path blocked: ${safety.reason}` }));
+              return;
+            }
+            const fileInfo = await readFileForWeb(reqPath);
+            socket.send(JSON.stringify({
+              type: "file_content",
+              path: reqPath,
+              content: fileInfo.content,
+              isMarkdown: fileInfo.isMarkdown,
+              isBinary: fileInfo.isBinary,
+              language: fileInfo.language,
+            }));
           }
         } catch (e) {
           socket.send(JSON.stringify({
