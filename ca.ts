@@ -563,6 +563,8 @@ async function main(): Promise<void> {
   const args = Deno.args;
   let promptParts: string[] = [];
   let interactiveMode = false;
+  let webMode = false;
+  let webPort = 9420;
   const cliOverrides: Partial<AgentConfig> = {};
   let i = 0;
 
