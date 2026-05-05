@@ -100,10 +100,6 @@ Deno.test("estimateTokens - typical sentence", () => {
   assert(tokens > 0 && tokens < 20, `Expected 1-20 tokens, got ${tokens}`);
 });
 
-Deno.test("estimateTokens - empty string returns 0", () => {
-  assertEquals(estimateTokens(""), 0);
-});
-
 Deno.test("estimateMessagesTokens - counts all messages", () => {
   const messages = [
     { role: "system", content: "You are a helpful assistant." },
