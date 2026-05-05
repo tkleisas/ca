@@ -494,6 +494,38 @@ async function execApplyDiff(path: string, search: string, replace: string, opts
   }
 }
 
+// ─── TypeScript Check ──────────────────────────────────
+
+const TS_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"]);
+
+async function checkTypeScript(filePath: string, cwd: string): Promise<string | null> {
+  const ext = filePath.substring(filePath.lastIndexOf("."));
+  if (!TS_EXTENSIONS.has(ext)) return null;
+  try {
+    const cmd = new Deno.Command("deno", {
+      args: ["check", filePath],
+      cwd,
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const { code, stdout, stderr } = await cmd.output();
+    const out = new TextDecoder().decode(stdout);
+    const err = new TextDecoder().decode(stderr);
+    const combined = (out + (err ? "\n" + err : "")).trim();
+    if (code === 0) {
+      return "  ✔ deno check passed";
+    } else {
+      // Limit output size
+      const truncated = combined.length > 1500
+        ? combined.substring(0, 1500) + "\n...[truncated]"
+        : combined;
+      return `  ✘ deno check failed:\n${truncated}`;
+    }
+  } catch (e) {
+    return `  ⚠ deno check unavailable: ${(e as Error).message}`;
+  }
+}
+
 // ─── Git Auto-Snapshot ─────────────────────────────────
 
 async function gitSnapshot(filePath: string, cwd: string): Promise<string | null> {
