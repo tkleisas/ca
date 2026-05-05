@@ -1393,7 +1393,14 @@ async function readFileForWeb(filePath: string): Promise<{ content: string; isBi
 
 // ─── HTTP + WebSocket Server ───────────────────────────
 
-export async function startWebServer(config: AgentConfig, port: number): Promise<void> {
+export interface WebServerHandle {
+  /** Resolves when the server shuts down */
+  done: Promise<void>;
+  /** Call to shut down the server */
+  shutdown: () => void;
+}
+
+export function startWebServer(config: AgentConfig, port: number): WebServerHandle {
   // Build context for the sidebar
   let contextStr = "";
   try {
