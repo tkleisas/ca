@@ -16,7 +16,7 @@ Type \e on a new line to submit multi-line input. /help for commands.
 
 ## Features
 
-- **7 built-in tools** — `read_file`, `write_file`, `run_command`, `search_files`, `list_directory`, `ask_user`, `apply_diff`
+- **8 built-in tools** — `read_file`, `write_file`, `run_command`, `search_files`, `list_directory`, `ask_user`, `apply_diff`, `restart_self`
 - **Interactive mode** — multi-turn conversations with multi-line input, command history, save/load
 - **Single-shot mode** — one-off prompts from the command line
 - **Path sandboxing** — restricts file access to the project directory; blocks sensitive system paths
