@@ -259,6 +259,30 @@ Options:
   --web-port <port>               Web UI port (default: 9420)
 ```
 
+## Web UI
+
+Start the browser-based interface with `--web`:
+
+```bash
+CA_API_KEY=sk-... deno run -A ca.ts --web
+# Opens at http://localhost:9420
+```
+
+### Features
+
+- **File browser** — Browse the project directory tree with the "Files" tab. Click directories to navigate, click files to open them in the viewer.
+- **File viewer** — Slide-out panel with syntax-highlighted code view. Press `Escape` to close.
+- **Markdown rendering** — `.md` files are rendered as formatted HTML with headings, code blocks, lists, tables, blockquotes, and links.
+- **Real-time streaming** — Agent responses stream in as they're generated.
+- **Tool call visualization** — Tool calls and results appear inline with expandable details.
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+Enter` | Send message |
+| `Escape` | Close file viewer |
+
 ## Safety
 
 ### Path Sandboxing
