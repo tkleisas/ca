@@ -222,15 +222,22 @@ export async function testWebSocketApi(port: number, timeoutMs = 15000): Promise
  * Run full browser-based tests using Playwright.
  * Requires: npx playwright install chromium (one-time)
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlPage = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlBrowser = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlContext = any;
+
 export async function testWithPlaywright(port: number, quick = false): Promise<TestSuiteResult> {
   const tests: TestResult[] = [];
   const start = Date.now();
-  let browser: unknown = null;
+  let browser: PlBrowser = null;
 
-  async function runTest(name: string, fn: (page: unknown) => Promise<void>): Promise<void> {
+  async function runTest(name: string, fn: (page: PlPage) => Promise<void>): Promise<void> {
     const t0 = Date.now();
     try {
-      await fn(null); // page will be set up below
+      await fn(null!); // page will be set up below
       tests.push({ name, passed: true, duration: Date.now() - t0 });
     } catch (e) {
       tests.push({ name, passed: false, duration: Date.now() - t0, error: (e as Error).message });
@@ -242,110 +249,60 @@ export async function testWithPlaywright(port: number, quick = false): Promise<T
     const { chromium } = await import("npm:playwright@1.49.1");
 
     browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    const page = await context.newPage();
-
-    // Collect WS messages from the page
-    async function collectMessages(page: unknown, count: number, timeoutMs = 8000): Promise<WsMessage[]> {
-      const messages: WsMessage[] = [];
-      const p = page as { evaluate: (fn: (...args: unknown[]) => unknown, ...args: unknown[]) => Promise<unknown> };
-      await p.evaluate(
-        ({ cnt, toMs }: { cnt: number; toMs: number }) => {
-          return new Promise<void>((resolve) => {
-            const msgs: WsMessage[] = [];
-            const origSend = WebSocket.prototype.send;
-            // Intercept incoming by listening on the document's WebSocket
-            const timer = setTimeout(() => resolve(), toMs);
-            const check = setInterval(() => {
-              const el = document.getElementById("messages");
-              if (el && el.children.length >= cnt) {
-                clearTimeout(timer);
-                clearInterval(check);
-                resolve();
-              }
-            }, 200);
-          });
-        },
-        { cnt: count, toMs: timeoutMs },
-      );
-      return messages;
-    }
+    const context: PlContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const page: PlPage = await context.newPage();
 
     // ─── Browser Test 1: Page loads ──────────────────────
     await runTest("[Browser] Page loads successfully", async () => {
-      const p = page as { goto: (url: string) => Promise<{ status: () => number }> };
-      const resp = await p.goto(`http://127.0.0.1:${port}/`);
+      const resp = await page.goto(`http://127.0.0.1:${port}/`);
       if (resp.status() !== 200) throw new Error(`HTTP ${resp.status()}`);
     });
 
     // ─── Browser Test 2: Title is correct ─────────────────
     await runTest("[Browser] Page title", async () => {
-      const p = page as { title: () => Promise<string> };
-      const title = await p.title();
+      const title = await page.title();
       if (!title.includes("CA")) throw new Error(`Unexpected title: ${title}`);
     });
 
     // ─── Browser Test 3: Sidebar elements visible ─────────
     await runTest("[Browser] Sidebar elements", async () => {
-      const p = page as { waitForSelector: (sel: string, opts?: Record<string, unknown>) => Promise<unknown> };
-      await p.waitForSelector("#sb-header", { timeout: 5000 });
-      await p.waitForSelector("#messages", { timeout: 3000 });
-      await p.waitForSelector("#input", { timeout: 3000 });
-      await p.waitForSelector("#send-btn", { timeout: 3000 });
+      await page.waitForSelector("#sb-header", { timeout: 5000 });
+      await page.waitForSelector("#messages", { timeout: 3000 });
+      await page.waitForSelector("#input", { timeout: 3000 });
+      await page.waitForSelector("#send-btn", { timeout: 3000 });
     });
 
     if (!quick) {
       // ─── Browser Test 4: File browser tab ──────────────────
       await runTest("[Browser] File browser tab switch", async () => {
-        const p = page as {
-          waitForSelector: (sel: string, opts?: Record<string, unknown>) => Promise<unknown>;
-          click: (sel: string) => Promise<void>;
-        };
-        await p.waitForSelector("#tab-files", { timeout: 3000 });
-        await p.click("#tab-files");
-        // Wait for directory listing to appear
-        await p.waitForSelector("#file-browser .fb-entry, #file-browser .fb-empty", { timeout: 5000 });
+        await page.waitForSelector("#tab-files", { timeout: 3000 });
+        await page.click("#tab-files");
+        await page.waitForSelector("#file-browser .fb-entry, #file-browser .fb-empty", { timeout: 5000 });
       });
 
       // ─── Browser Test 5: Sessions tab ──────────────────────
       await runTest("[Browser] Sessions tab", async () => {
-        const p = page as {
-          waitForSelector: (sel: string, opts?: Record<string, unknown>) => Promise<unknown>;
-          click: (sel: string) => Promise<void>;
-        };
-        await p.click("#tab-sessions");
-        await p.waitForSelector("#sessions-list", { timeout: 5000 });
+        await page.click("#tab-sessions");
+        await page.waitForSelector("#sessions-list", { timeout: 5000 });
       });
 
       // ─── Browser Test 6: Input area functional ─────────────
       await runTest("[Browser] Input and send button", async () => {
-        const p = page as {
-          waitForSelector: (sel: string, opts?: Record<string, unknown>) => Promise<unknown>;
-          type: (sel: string, text: string) => Promise<void>;
-          isDisabled: (sel: string) => Promise<boolean>;
-          click: (sel: string) => Promise<void>;
-        };
-        await p.click("#tab-context"); // back to chat
-        const inputDisabled = await p.isDisabled("#input");
-        const btnDisabled = await p.isDisabled("#send-btn");
+        await page.click("#tab-context");
+        const inputDisabled = await page.isDisabled("#input");
+        const btnDisabled = await page.isDisabled("#send-btn");
         if (inputDisabled) throw new Error("Input should be enabled");
         if (btnDisabled) throw new Error("Send button should be enabled");
-        // Type something in the input
-        await p.type("#input", "test message");
+        await page.type("#input", "test message");
       });
 
       // ─── Browser Test 7: Status text ───────────────────────
       await runTest("[Browser] Status indicator", async () => {
-        const p = page as {
-          waitForSelector: (sel: string, opts?: Record<string, unknown>) => Promise<unknown>;
-          textContent: (sel: string) => Promise<string>;
-        };
-        await p.waitForSelector("#status", { timeout: 3000 });
-        const statusText = await p.textContent("#status");
+        await page.waitForSelector("#status", { timeout: 3000 });
+        const statusText = await page.textContent("#status");
         if (!statusText || statusText.includes("connecting")) {
-          // If still connecting, wait a bit
           await new Promise(r => setTimeout(r, 2000));
-          const retryText = await p.textContent("#status");
+          const retryText = await page.textContent("#status");
           if (retryText && retryText.includes("connecting")) {
             throw new Error("Status still connecting after wait");
           }
@@ -353,16 +310,11 @@ export async function testWithPlaywright(port: number, quick = false): Promise<T
       });
     }
 
-    // ─── Browser Test 8: WebSocket connected (status not "connection error") ──
+    // ─── Browser Test 8: WebSocket connected ──
     await runTest("[Browser] WebSocket connected", async () => {
-      const p = page as {
-        waitForSelector: (sel: string, opts?: Record<string, unknown>) => Promise<unknown>;
-        textContent: (sel: string) => Promise<string>;
-      };
-      await p.waitForSelector("#status", { timeout: 3000 });
-      // Wait up to 5s for status to not say "connecting" or "error"
+      await page.waitForSelector("#status", { timeout: 3000 });
       for (let i = 0; i < 25; i++) {
-        const text = await p.textContent("#status");
+        const text = await page.textContent("#status");
         if (text && !text.includes("connecting") && !text.includes("error")) return;
         await new Promise(r => setTimeout(r, 200));
       }
@@ -371,19 +323,15 @@ export async function testWithPlaywright(port: number, quick = false): Promise<T
 
     await context.close();
   } catch (e) {
+    const msg = (e as Error).message ?? "";
     // If Playwright itself fails (not installed), record as skipped
-    if ((e as Error).message?.includes("Executable doesn't exist") ||
-        (e as Error).message?.includes("playwright")) {
+    if (msg.includes("Executable doesn't exist") || msg.includes("playwright")) {
       return {
         suite: "Playwright Browser",
-        passed: 0,
-        failed: 0,
-        skipped: tests.length + 1,
-        duration: Date.now() - start,
-        tests,
+        passed: 0, failed: 0, skipped: tests.length + 1,
+        duration: Date.now() - start, tests,
       };
     }
-    // Otherwise record the error on the last test
     if (tests.length > 0) {
       tests[tests.length - 1].passed = false;
       tests[tests.length - 1].error = (e as Error).message;
@@ -392,7 +340,7 @@ export async function testWithPlaywright(port: number, quick = false): Promise<T
     }
   } finally {
     if (browser) {
-      try { await (browser as { close: () => Promise<void> }).close(); } catch { /* ok */ }
+      try { await browser.close(); } catch { /* ok */ }
     }
   }
 
@@ -401,11 +349,8 @@ export async function testWithPlaywright(port: number, quick = false): Promise<T
 
   return {
     suite: "Playwright Browser",
-    passed,
-    failed,
-    skipped: 0,
-    duration: Date.now() - start,
-    tests,
+    passed, failed, skipped: 0,
+    duration: Date.now() - start, tests,
   };
 }
 
