@@ -304,11 +304,12 @@ function buildRequestBody(
 // ─── Token Estimation ──────────────────────────────────
 
 /**
- * Rough token estimation: ~4 characters per token.
+ * Rough token estimation: ~3.5 characters per token.
  * This is a conservative estimate; actual tokens vary by model.
  * Claude: ~3.5 chars/token, GPT-4: ~4 chars/token, DeepSeek: ~3 chars/token.
  */
 export function estimateTokens(text: string): number {
+  if (!text) return 0;
   return Math.ceil(text.length / 3.5);
 }
 
