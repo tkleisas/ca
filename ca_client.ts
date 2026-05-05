@@ -26,12 +26,25 @@ async function retryDelay(attempt: number, maxRetries: number): Promise<void> {
   await new Promise((r) => setTimeout(r, delay));
 }
 
-async function handleRateLimit(response: Response, attempt: number, maxRetries: number): Promise<boolean> {
-  if (response.status === 429 && attempt < maxRetries - 1) {
-    await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status === 502 || status === 503 || status === 504;
+}
+
+async function handleRetryableError(response: Response, attempt: number, maxRetries: number): Promise<boolean> {
+  if (isRetryableStatus(response.status) && attempt < maxRetries - 1) {
+    const delay = response.status === 429 ? 2000 * (attempt + 1) : 1000 * (attempt + 1);
+    await new Promise((r) => setTimeout(r, delay));
     return true; // retry
   }
   return false;
+}
+
+function isRetryableError(error: unknown): boolean {
+  // Network errors (TypeError from fetch), connection refused, etc.
+  if (error instanceof TypeError) return true;
+  // Deno-specific network errors
+  const msg = String(error);
+  return msg.includes("connection") || msg.includes("network") || msg.includes("timeout") || msg.includes("abort");
 }
 
 // ─── Non-Streaming Completion ─────────────────────────
