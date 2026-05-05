@@ -74,7 +74,7 @@ export async function chatCompletion(
 
       if (!response.ok) {
         const text = await response.text();
-        if (await handleRateLimit(response, attempt, maxRetries)) continue;
+        if (await handleRetryableError(response, attempt, maxRetries)) continue;
         throw new Error(`API ${response.status}: ${text.substring(0, 500)}`);
       }
 
@@ -82,7 +82,7 @@ export async function chatCompletion(
       const message = data.choices[0].message as ChatMessage;
       return { message, usage: parseUsage(data) };
     } catch (e) {
-      if (attempt === maxRetries - 1) throw e;
+      if (attempt === maxRetries - 1 || !isRetryableError(e)) throw e;
       await retryDelay(attempt, maxRetries);
     }
   }
