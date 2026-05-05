@@ -1319,10 +1319,38 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
   // Global state per session
   let messages: ChatMessage[] = [];
   let systemContent = "";
+  let currentSessionId: string | null = null;
 
-  async function initSession(): Promise<void> {
+  async function initSession(sessionId?: string): Promise<void> {
     systemContent = await buildSystemContent(config, Deno.cwd());
+    const cwd = Deno.cwd();
+    if (sessionId) {
+      // Load existing session
+      try {
+        const loaded = await loadSession(cwd, sessionId);
+        if (loaded.length > 0 && loaded[0].role === "system") {
+          loaded[0].content = systemContent; // refresh system prompt
+        }
+        messages = loaded;
+        currentSessionId = sessionId;
+        console.error(`  ${colorize("📂", C.cyan)} Session ${dim(sessionId)} loaded (${loaded.length} messages)`);
+        return;
+      } catch {
+        console.error(`  ${colorize("⚠", C.yellow)} Session ${dim(sessionId)} not found, creating new`);
+      }
+    }
+    // Create new session
+    const id = await createSession(cwd, config.model);
+    currentSessionId = id;
     messages = [{ role: "system", content: systemContent }];
+  }
+
+  async function autoSave(): Promise<void> {
+    if (currentSessionId && messages.length > 1) {
+      try {
+        await saveSession(Deno.cwd(), currentSessionId, messages, config.model);
+      } catch { /* non-critical */ }
+    }
   }
 
   await initSession();
