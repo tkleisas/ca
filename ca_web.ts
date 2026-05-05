@@ -257,6 +257,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monos
 .sb-panel { flex: 1; overflow-y: auto; }
 
 /* File browser */
+#fb-filter-wrap { padding: 6px 8px; border-bottom: 1px solid #21262d; }
+#fb-filter { width: 100%; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 5px 8px; font-size: 11px; font-family: monospace; outline: none; }
+#fb-filter:focus { border-color: #58a6ff; }
+#fb-filter::placeholder { color: #484f58; }
 #file-browser { padding: 0; font-size: 12px; user-select: none; }
 .fb-path { padding: 8px 12px; color: #8b949e; font-size: 11px; border-bottom: 1px solid #21262d; cursor: pointer; display: flex; align-items: center; gap: 4px; }
 .fb-path:hover { color: #c9d1d9; }
