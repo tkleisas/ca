@@ -267,11 +267,16 @@ async function execWriteFile(path: string, content: string, opts: ToolExecOption
     const diff = await computeDiff(path, oldContent, content, opts.cwd);
     if (diff) console.error(diff);
 
+    // Run TypeScript check for .ts files
+    const tsCheck = await checkTypeScript(path, opts.cwd);
+    if (tsCheck) console.error(tsCheck);
+
     const existed = oldContent !== null;
+    const checkInfo = tsCheck ? `\n${tsCheck}` : "";
     return {
-      output: existed
+      output: (existed
         ? `Successfully overwrote ${path} with ${content.length} bytes`
-        : `Successfully created ${path} with ${content.length} bytes`,
+        : `Successfully created ${path} with ${content.length} bytes`) + checkInfo,
       error: false,
       diff: diff || undefined,
     };
