@@ -78,7 +78,7 @@ CA_API_BASE=http://localhost:8080/v1 \
 
 ## Tools
 
-CA has 7 tools available to the agent. Each can be enabled or disabled in configuration.
+CA has 8 tools available to the agent. Each can be enabled or disabled in configuration.
 
 ### `read_file(path)`
 Read a file's contents. Returns the file with line numbers for easy reference.
