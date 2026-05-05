@@ -315,10 +315,11 @@ ca_types.ts      All TypeScript interfaces and types
 ca_ui.ts         ANSI colors, spinner, banner, syntax highlighting, prompts
 ca_sandbox.ts    Path validation, command danger detection
 ca_config.ts     Configuration loading (.ca.json → env → CLI)
-ca_tools.ts      Tool definitions and executors (7 tools)
+ca_tools.ts      Tool definitions and executors (8 tools)
 ca_client.ts     API client, streaming (SSE), token estimation
 ca_agent.ts      Agent loop, project context, save/load, system prompt
-ca_test.ts       27 unit tests
+ca_web.ts        Web UI with WebSocket-based streaming
+ca_test.ts       29 unit tests
 ```
 
 ### Dependency Graph
