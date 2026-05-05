@@ -1409,6 +1409,13 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
                 language: fileInfo.language,
                 diagnostics,
               }));
+            } else if (data.type === "check_file") {
+              const reqPath = data.path as string;
+              if (!reqPath) return;
+              const safety = isPathSafe(reqPath, Deno.cwd(), config.sandbox);
+              if (!safety.safe) return;
+              const diags = await runTsDiagnostics(reqPath, Deno.cwd());
+              socket.send(JSON.stringify({ type: "diagnostics", path: reqPath, diagnostics: diags }));
             }
           } catch (e) {
             socket.send(JSON.stringify({
