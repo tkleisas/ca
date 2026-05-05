@@ -655,14 +655,7 @@ async function main(): Promise<void> {
 
   // Interactive mode
   if (interactiveMode) {
-    const isLocal = config.apiBase.includes("localhost") ||
-      config.apiBase.includes("127.0.0.1");
-    if (!config.apiKey && !isLocal) {
-      console.error(
-        `${colorize("✘", C.red)} ${bold("Error:")} CA_API_KEY not set. Use --api-key, CA_API_KEY env, or a local API base.`,
-      );
-      Deno.exit(1);
-    }
+    ensureApiKey(config);
     await interactive();
     return;
   }
@@ -676,14 +669,7 @@ async function main(): Promise<void> {
     Deno.exit(1);
   }
 
-  const isLocal = config.apiBase.includes("localhost") ||
-    config.apiBase.includes("127.0.0.1");
-  if (!config.apiKey && !isLocal) {
-    console.error(
-      `${colorize("✘", C.red)} ${bold("Error:")} CA_API_KEY not set. Use --api-key, CA_API_KEY env, or a local API base.`,
-    );
-    Deno.exit(1);
-  }
+  ensureApiKey(config);
 
   const result = await run(prompt, undefined, { config });
   if (result.needsRestart) {
