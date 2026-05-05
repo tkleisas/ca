@@ -5,7 +5,7 @@ import { isPathSafe, isCommandSafe } from "./ca_sandbox.ts";
 import { estimateTokens, estimateMessagesTokens } from "./ca_client.ts";
 import { colorize, dim, bold } from "./ca_ui.ts";
 import { buildToolDefs } from "./ca_tools.ts";
-import { buildSystemPrompt, buildSystemContent } from "./ca_agent.ts";
+import { buildSystemPrompt, buildSystemContent, createSession, saveSession, loadSession, deleteSession, listSessions, updateSessionTitle } from "./ca_agent.ts";
 import { validateConfig } from "./ca_config.ts";
 import type { AgentConfig } from "./ca_types.ts";
 
