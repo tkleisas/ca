@@ -1,7 +1,7 @@
 import type { ChatMessage, AgentConfig, UsageInfo } from "./ca_types.ts";
 import { VERSION } from "./ca_types.ts";
 import { buildToolDefs, executeTool } from "./ca_tools.ts";
-import { chatCompletion, chatCompletionStream, estimateMessagesTokens, type StreamEvent } from "./ca_client.ts";
+import { chatCompletionStream, estimateMessagesTokens } from "./ca_client.ts";
 import { buildSystemContent, saveConversation } from "./ca_agent.ts";
 
 // ─── Web UI Event Types ─────────────────────────────────
