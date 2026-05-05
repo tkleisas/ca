@@ -468,6 +468,19 @@ function handleEvent(ev) {
       streaming = false;
       setSendEnabled(true);
       break;
+
+    case "session_list":
+      renderSessionList(ev.sessions, ev.currentId);
+      break;
+
+    case "session_switched":
+      // Clear messages and show loaded session
+      document.getElementById("messages").innerHTML = "";
+      const summary = ev.messages && ev.messages.length > 0
+        ? \`Loaded \${ev.messages.length} messages from session \${ev.id}\`
+        : \`New session \${ev.id}\`;
+      addWarning(summary);
+      break;
   }
   scrollDown();
 }
