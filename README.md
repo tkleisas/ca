@@ -319,7 +319,7 @@ ca_tools.ts      Tool definitions and executors (8 tools)
 ca_client.ts     API client, streaming (SSE), token estimation
 ca_agent.ts      Agent loop, project context, save/load, system prompt
 ca_web.ts        Web UI with WebSocket-based streaming
-ca_test.ts       36 unit tests
+ca_test.ts       40 unit tests
 ```
 
 ### Dependency Graph
