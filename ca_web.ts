@@ -223,7 +223,8 @@ const CSS = `
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; background: #0d1117; color: #c9d1d9; height: 100vh; overflow: hidden; }
 #app { display: flex; height: 100vh; }
 #sidebar { width: 280px; background: #161b22; border-right: 1px solid #30363d; display: flex; flex-direction: column; font-size: 13px; }
-#sb-header { padding: 14px 16px; font-weight: 700; font-size: 15px; color: #58a6ff; border-bottom: 1px solid #30363d; }
+#sb-header { padding: 14px 16px 6px; font-weight: 700; font-size: 15px; color: #58a6ff; }
+#sb-version { padding: 0 16px 10px; color: #484f58; font-size: 11px; border-bottom: 1px solid #30363d; }
 #sb-context { padding: 12px 16px; color: #8b949e; white-space: pre-wrap; overflow-y: auto; flex: 1; font-size: 12px; line-height: 1.5; }
 #sb-stats { padding: 12px 16px; border-top: 1px solid #30363d; color: #8b949e; font-size: 12px; }
 #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
