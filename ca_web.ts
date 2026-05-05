@@ -1275,10 +1275,20 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
                 return;
               }
               const fileInfo = await readFileForWeb(reqPath);
+              // Run deno check for TS files
+              let diagnostics: Diagnostic[] | undefined;
+              if (/\.(ts|tsx)$/.test(reqPath)) {
+                diagnostics = await runTsDiagnostics(reqPath, Deno.cwd());
+              }
               socket.send(JSON.stringify({
                 type: "file_content",
                 path: reqPath,
                 content: fileInfo.content,
+                isMarkdown: fileInfo.isMarkdown,
+                isBinary: fileInfo.isBinary,
+                language: fileInfo.language,
+                diagnostics,
+              }));ntent: fileInfo.content,
                 isMarkdown: fileInfo.isMarkdown,
                 isBinary: fileInfo.isBinary,
                 language: fileInfo.language,
