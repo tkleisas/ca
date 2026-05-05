@@ -1394,6 +1394,8 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
                 },
               });
               messages = result.messages;
+              // Auto-save after each exchange
+              await autoSave();
 
               if (result.needsRestart) {
                 // Wait a moment then restart
