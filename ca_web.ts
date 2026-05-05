@@ -573,7 +573,7 @@ function openFile(path) {
 
 let viewerPath = null;
 
-function showFileViewer(path, content, isMarkdown, isBinary, language) {
+function showFileViewer(path, content, isMarkdown, isBinary, language, diagnostics) {
   viewerPath = path;
   const overlay = document.getElementById("viewer-overlay");
   const title = document.getElementById("viewer-title");
@@ -581,7 +581,11 @@ function showFileViewer(path, content, isMarkdown, isBinary, language) {
 
   // Show filename in title
   const name = path.includes("/") ? path.substring(path.lastIndexOf("/") + 1) : path;
+  const isTS = /\.(ts|tsx)$/i.test(name);
   title.textContent = "📄 " + name;
+  // Add check button for TS files
+  const checkBtnHtml = isTS ? \` <button id="viewer-check-btn" onclick="checkCurrentFile()" style="background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer" title="Run deno check">🔍 Check</button>\` : "";
+  title.innerHTML = "📄 " + escapeHtml(name) + checkBtnHtml;
 
   if (isBinary) {
     contentDiv.className = "";
@@ -595,7 +599,66 @@ function showFileViewer(path, content, isMarkdown, isBinary, language) {
     contentDiv.innerHTML = \`<pre><code>\${highlighted}</code></pre>\`;
   }
 
+  // Show diagnostics if available
+  if (diagnostics && diagnostics.length > 0) {
+    renderDiagnostics(diagnostics);
+  } else if (isTS) {
+    // Placeholder for diagnostics
+    const diagDiv = document.createElement("div");
+    diagDiv.id = "viewer-diagnostics";
+    diagDiv.style.cssText = "margin-top:12px;font-size:12px;color:#484f58;font-style:italic";
+    diagDiv.textContent = "Running diagnostics…";
+    contentDiv.appendChild(diagDiv);
+  }
+
   overlay.style.display = "";
+}
+
+function checkCurrentFile() {
+  if (viewerPath) {
+    ws.send(JSON.stringify({ type: "check_file", path: viewerPath }));
+  }
+}
+
+function updateViewerDiagnostics(diagnostics) {
+  renderDiagnostics(diagnostics);
+}
+
+function renderDiagnostics(diagnostics) {
+  // Remove existing
+  const existing = document.getElementById("viewer-diagnostics");
+  if (existing) existing.remove();
+
+  const contentDiv = document.getElementById("viewer-content");
+  const diagDiv = document.createElement("div");
+  diagDiv.id = "viewer-diagnostics";
+  diagDiv.style.cssText = "margin-top:12px;border-top:1px solid #30363d;padding-top:10px";
+
+  if (!diagnostics || diagnostics.length === 0) {
+    diagDiv.innerHTML = '<div style="color:#7ee787;font-size:12px">✓ No issues found</div>';
+  } else {
+    const errors = diagnostics.filter(d => d.severity === "error");
+    const warnings = diagnostics.filter(d => d.severity === "warning");
+    const infos = diagnostics.filter(d => d.severity === "info");
+    const summary = [];
+    if (errors.length) summary.push(\`<span style="color:#f85149">\${errors.length} errors</span>\`);
+    if (warnings.length) summary.push(\`<span style="color:#d2991d">\${warnings.length} warnings</span>\`);
+    if (infos.length) summary.push(\`<span style="color:#8b949e">\${infos.length} info</span>\`);
+    diagDiv.innerHTML = \`<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:#c9d1d9">Diagnostics: \${summary.join(", ") || "none"}</div>\`;
+
+    for (const d of diagnostics) {
+      const color = d.severity === "error" ? "#f85149" : d.severity === "warning" ? "#d2991d" : "#8b949e";
+      const icon = d.severity === "error" ? "✘" : d.severity === "warning" ? "⚠" : "ℹ";
+      const code = d.code ? \` [\${d.code}]\` : "";
+      diagDiv.innerHTML += \`<div style="padding:4px 0;font-size:12px;border-bottom:1px solid #21262d">\`;
+      diagDiv.innerHTML += \`<span style="color:\${color}">\${icon}</span> \`;
+      diagDiv.innerHTML += \`<span style="color:#8b949e">L\${d.line}:\${d.column}</span> \`;
+      diagDiv.innerHTML += \`<span style="color:#c9d1d9">\${escapeHtml(d.message)}</span>\`;
+      diagDiv.innerHTML += \`<span style="color:#484f58">\${code}</span></div>\`;
+    }
+  }
+
+  contentDiv.appendChild(diagDiv);
 }
 
 document.getElementById("viewer-close").addEventListener("click", () => {
