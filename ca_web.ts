@@ -1365,7 +1365,7 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
       if (url.pathname === "/ws") {
         const { socket, response } = Deno.upgradeWebSocket(req);
 
-        socket.onopen = () => {
+        socket.onopen = async () => {
           // Send banner and context
           socket.send(JSON.stringify({
             type: "banner",
@@ -1377,6 +1377,13 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
           socket.send(JSON.stringify({
             type: "context",
             content: contextStr || `Working directory: ${Deno.cwd()}`,
+          }));
+          // Send session list
+          const sessions = await listSessions(Deno.cwd());
+          socket.send(JSON.stringify({
+            type: "session_list",
+            sessions,
+            currentId: currentSessionId ?? "",
           }));
         };
 
