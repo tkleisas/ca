@@ -282,7 +282,7 @@ export async function run(
       // If in dry-run mode, stop after one round
       if (config.dryRun) {
         spinner.succeed("Dry-run complete (1 round)");
-        return msgs;
+        return { messages: msgs, needsRestart: false };
       }
     } else {
       // No tool calls — final response
@@ -290,12 +290,12 @@ export async function run(
       if (response.content) {
         console.log(response.content);
       }
-      return msgs;
+      return { messages: msgs, needsRestart: false };
     }
   }
 
   console.error(`${colorize("⚠", dim(""))} Reached max rounds (${config.maxRounds})`);
-  return msgs;
+  return { messages: msgs, needsRestart: false };
 }
 
 // ─── Conversation Save/Load ────────────────────────────
