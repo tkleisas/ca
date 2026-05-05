@@ -201,6 +201,7 @@ export async function executeTool(
     case "ask_user":        return execAskUser(args.question as string, opts);
     case "apply_diff":      return execApplyDiff(args.path as string, args.search as string, args.replace as string, opts);
     case "restart_self":    return execRestartSelf(args.confirm as boolean, opts);
+    case "test_web":        return execTestWeb((args.port as number) ?? 9420, args.playwright as boolean ?? false, args.quick as boolean ?? false, opts);
     default:                return { output: `Unknown tool: ${name}`, error: true };
   }
 }
