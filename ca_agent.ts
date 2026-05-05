@@ -177,6 +177,12 @@ export async function run(
 
     // Token budget check
     const estTokens = estimateMessagesTokens(msgs);
+    const tokenPct = ((estTokens / config.maxTokens) * 100).toFixed(1);
+    if (round === 1 || estTokens > config.maxTokens * 0.3) {
+      console.error(
+        dim(`  [context: ~${estTokens.toLocaleString()} / ${config.maxTokens.toLocaleString()} tokens (${tokenPct}%)]`),
+      );
+    }
     if (estTokens > config.maxTokens * 0.85) {
       console.error(
         `${colorize("⚠", dim(""))} ${bold("Token budget warning:")} ~${estTokens} estimated tokens (${((estTokens / config.maxTokens) * 100).toFixed(0)}% of ${config.maxTokens})`,
