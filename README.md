@@ -20,7 +20,7 @@ Type \e on a new line to submit multi-line input. /help for commands.
 - **Interactive mode** — multi-turn conversations with multi-line input, command history, save/load
 - **Single-shot mode** — one-off prompts from the command line
 - **Path sandboxing** — restricts file access to the project directory; blocks sensitive system paths
-- **Command safety** — detects and blocks 22 dangerous shell patterns (`rm -rf`, `sudo`, `curl | bash`, fork bombs, etc.)
+- **Command safety** — detects and blocks 24 dangerous shell patterns (`rm -rf`, `sudo`, `curl | bash`, fork bombs, etc.)
 - **Approval mode** — prompts for confirmation before writes, dangerous commands, and diffs
 - **Dry-run mode** — previews all actions without modifying anything
 - **Parallel tool execution** — multiple independent tool calls run concurrently
