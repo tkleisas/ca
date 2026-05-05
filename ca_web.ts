@@ -4,6 +4,7 @@ import { buildToolDefs, executeTool } from "./ca_tools.ts";
 import { chatCompletionStream, estimateMessagesTokens } from "./ca_client.ts";
 import { buildSystemContent, saveConversation } from "./ca_agent.ts";
 import { colorize } from "./ca_ui.ts";
+import { isPathSafe } from "./ca_sandbox.ts";
 
 // ─── Web UI Event Types ─────────────────────────────────
 
