@@ -1288,10 +1288,6 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
                 isBinary: fileInfo.isBinary,
                 language: fileInfo.language,
                 diagnostics,
-              }));ntent: fileInfo.content,
-                isMarkdown: fileInfo.isMarkdown,
-                isBinary: fileInfo.isBinary,
-                language: fileInfo.language,
               }));
             }
           } catch (e) {
