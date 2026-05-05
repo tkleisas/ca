@@ -25,7 +25,7 @@ export type WebEvent =
   | { type: "aborted" }
   // File browser events
   | { type: "dir_listing"; path: string; entries: DirEntry[] }
-  | { type: "file_content"; path: string; content: string; isMarkdown: boolean; isBinary: boolean; language: string; diagnostics?: Diagnostic[] };
+  | { type: "file_content"; path: string; content: string; isMarkdown: boolean; isBinary: boolean; language: string; diagnostics?: Diagnostic[] }
   // Language server events
   | { type: "diagnostics"; path: string; diagnostics: Diagnostic[] };
 
