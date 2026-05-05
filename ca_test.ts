@@ -382,7 +382,8 @@ Deno.test("SessionStore - list sessions sorted by date", async () => {
 Deno.test("SessionStore - auto-title from first user message", async () => {
   await cleanupTestSessions();
   const cwd = Deno.cwd();
-  const id = await createSession(cwd, "model", "TEST: auto-title");
+  // Auto-titling only kicks in when title starts with "Session "
+  const id = await createSession(cwd, "model"); // default: "Session {id}"
 
   const msgs = [
     { role: "system" as const, content: "You are helpful" },
