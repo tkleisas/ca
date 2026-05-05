@@ -270,11 +270,14 @@ CA_API_KEY=sk-... deno run -A ca.ts --web
 
 ### Features
 
-- **File browser** — Browse the project directory tree with the "Files" tab. Click directories to navigate, click files to open them in the viewer.
-- **File viewer** — Slide-out panel with syntax-highlighted code view. Press `Escape` to close.
+- **File browser** — Browse the project directory tree with the "Files" tab. Click directories to navigate, click files to open them in the viewer. Filter files with the search box.
+- **File viewer** — Slide-out panel with syntax-highlighted code view (TypeScript, JavaScript, Python, Rust, Go, and more). Press `Escape` to close.
+- **TypeScript diagnostics** — `.ts` and `.tsx` files get a "🔍 Check" button that runs `deno check` and displays errors/warnings inline with line numbers and error codes.
 - **Markdown rendering** — `.md` files are rendered as formatted HTML with headings, code blocks, lists, tables, blockquotes, and links.
 - **Real-time streaming** — Agent responses stream in as they're generated.
-- **Tool call visualization** — Tool calls and results appear inline with expandable details.
+- **Token usage display** — Sidebar shows current token usage (e.g., "Tokens: ~595 / 1,000,000 (0.1%)") with color-coded warnings near budget limits.
+- **Session management** — Create, switch, and delete sessions from the "Sessions" tab. Sessions auto-save after each exchange.
+- **Tool call visualization** — Tool calls and results appear inline with expandable details and diff highlighting.
 
 ### Keyboard Shortcuts
 
