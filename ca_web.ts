@@ -248,6 +248,63 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monos
 .error-msg { color: #f85149; font-size: 12px; padding: 4px 0; }
 
 #status { position: fixed; bottom: 8px; right: 16px; font-size: 11px; color: #484f58; }
+
+/* Sidebar tabs */
+#sb-tabs { display: flex; border-bottom: 1px solid #30363d; }
+.sb-tab { flex: 1; padding: 8px 0; background: none; border: none; color: #8b949e; cursor: pointer; font-size: 12px; font-weight: 600; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.sb-tab:hover { color: #c9d1d9; }
+.sb-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+.sb-panel { flex: 1; overflow-y: auto; }
+
+/* File browser */
+#file-browser { padding: 0; font-size: 12px; user-select: none; }
+.fb-path { padding: 8px 12px; color: #8b949e; font-size: 11px; border-bottom: 1px solid #21262d; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.fb-path:hover { color: #c9d1d9; }
+.fb-entry { display: flex; align-items: center; padding: 3px 12px; cursor: pointer; color: #c9d1d9; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fb-entry:hover { background: #1c2128; }
+.fb-entry.dir { color: #58a6ff; font-weight: 500; }
+.fb-entry .fb-icon { font-size: 13px; flex-shrink: 0; width: 16px; text-align: center; }
+.fb-entry .fb-size { margin-left: auto; color: #484f58; font-size: 10px; flex-shrink: 0; }
+.fb-empty { padding: 16px 12px; color: #484f58; font-style: italic; font-size: 12px; }
+
+/* File viewer */
+#viewer-overlay { position: fixed; top: 0; right: 0; bottom: 0; width: 50%; min-width: 400px; background: #161b22; border-left: 1px solid #30363d; z-index: 100; display: flex; flex-direction: column; box-shadow: -4px 0 24px rgba(0,0,0,0.5); }
+#viewer { display: flex; flex-direction: column; height: 100%; }
+#viewer-header { display: flex; align-items: center; padding: 10px 14px; border-bottom: 1px solid #30363d; background: #0d1117; gap: 10px; }
+#viewer-title { flex: 1; font-size: 13px; font-weight: 600; color: #c9d1d9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#viewer-close { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 18px; padding: 2px 6px; border-radius: 4px; }
+#viewer-close:hover { background: #30363d; color: #c9d1d9; }
+#viewer-content { flex: 1; overflow-y: auto; padding: 16px; font-size: 13px; line-height: 1.6; }
+#viewer-content pre { margin: 0; padding: 12px; background: #0d1117; border: 1px solid #21262d; border-radius: 6px; overflow-x: auto; font-size: 12px; line-height: 1.5; }
+#viewer-content code { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 12px; }
+#viewer-content .viewer-binary { text-align: center; padding: 40px 20px; color: #8b949e; }
+#viewer-content .viewer-binary .icon { font-size: 48px; display: block; margin-bottom: 12px; }
+
+/* Markdown rendered in viewer */
+.md-rendered { line-height: 1.7; }
+.md-rendered h1 { font-size: 1.8em; border-bottom: 1px solid #30363d; padding-bottom: 8px; margin: 20px 0 12px; color: #f0f6fc; }
+.md-rendered h2 { font-size: 1.4em; border-bottom: 1px solid #30363d; padding-bottom: 6px; margin: 18px 0 10px; color: #f0f6fc; }
+.md-rendered h3 { font-size: 1.2em; margin: 16px 0 8px; color: #f0f6fc; }
+.md-rendered h4, .md-rendered h5, .md-rendered h6 { font-size: 1.05em; margin: 14px 0 6px; color: #f0f6fc; }
+.md-rendered p { margin: 8px 0; }
+.md-rendered a { color: #58a6ff; text-decoration: none; }
+.md-rendered a:hover { text-decoration: underline; }
+.md-rendered ul, .md-rendered ol { padding-left: 24px; margin: 8px 0; }
+.md-rendered li { margin: 3px 0; }
+.md-rendered blockquote { border-left: 3px solid #30363d; padding: 4px 12px; margin: 10px 0; color: #8b949e; background: #0d1117; border-radius: 0 4px 4px 0; }
+.md-rendered code { background: #1c2128; padding: 2px 5px; border-radius: 3px; font-size: 12px; }
+.md-rendered pre { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; overflow-x: auto; margin: 10px 0; }
+.md-rendered pre code { background: none; padding: 0; font-size: 12px; }
+.md-rendered hr { border: none; border-top: 1px solid #30363d; margin: 16px 0; }
+.md-rendered strong { color: #f0f6fc; }
+.md-rendered table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+.md-rendered th, .md-rendered td { border: 1px solid #30363d; padding: 6px 12px; text-align: left; }
+.md-rendered th { background: #0d1117; font-weight: 600; }
+.md-rendered img { max-width: 100%; border-radius: 4px; }
+
+@media (max-width: 800px) {
+  #viewer-overlay { width: 100%; min-width: unset; }
+}
 `;
 
 // ─── JavaScript Client ──────────────────────────────────
