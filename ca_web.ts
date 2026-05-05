@@ -27,7 +27,10 @@ export type WebEvent =
   | { type: "dir_listing"; path: string; entries: DirEntry[] }
   | { type: "file_content"; path: string; content: string; isMarkdown: boolean; isBinary: boolean; language: string; diagnostics?: Diagnostic[] }
   // Language server events
-  | { type: "diagnostics"; path: string; diagnostics: Diagnostic[] };
+  | { type: "diagnostics"; path: string; diagnostics: Diagnostic[] }
+  // Session events
+  | { type: "session_list"; sessions: SessionMeta[]; currentId: string }
+  | { type: "session_switched"; id: string; messages: { role: string; content: string | null }[] };
 
 export interface DirEntry {
   name: string;
