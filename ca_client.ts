@@ -20,31 +20,29 @@ function parseUsage(data: Record<string, unknown>): UsageInfo | undefined {
   };
 }
 
-async function retryDelay(attempt: number, maxRetries: number): Promise<void> {
-  const delay = 1000 * (attempt + 1);
-  console.error(`${colorize("⚠", dim(""))} Retrying in ${delay}ms...`);
-  await new Promise((r) => setTimeout(r, delay));
-}
-
 function isRetryableStatus(status: number): boolean {
   return status === 429 || status === 502 || status === 503 || status === 504;
 }
 
-async function handleRetryableError(response: Response, attempt: number, maxRetries: number): Promise<boolean> {
-  if (isRetryableStatus(response.status) && attempt < maxRetries - 1) {
-    const delay = response.status === 429 ? 2000 * (attempt + 1) : 1000 * (attempt + 1);
-    await new Promise((r) => setTimeout(r, delay));
-    return true; // retry
-  }
-  return false;
+function getRetryDelay(attempt: number, status?: number): number {
+  // Rate limit uses longer backoff
+  return status === 429 ? 2000 * (attempt + 1) : 1000 * (attempt + 1);
+}
+
+async function waitForRetry(attempt: number, status?: number): Promise<void> {
+  const delay = getRetryDelay(attempt, status);
+  console.error(`${colorize("⚠", dim(""))} Retrying in ${delay}ms...`);
+  await new Promise((r) => setTimeout(r, delay));
 }
 
 function isRetryableError(error: unknown): boolean {
+  // Don't retry abort signals — propagate them
+  if (error instanceof Error && error.name === "AbortError") return false;
   // Network errors (TypeError from fetch), connection refused, etc.
   if (error instanceof TypeError) return true;
   // Deno-specific network errors
   const msg = String(error);
-  return msg.includes("connection") || msg.includes("network") || msg.includes("timeout") || msg.includes("abort");
+  return msg.includes("connection") || msg.includes("network") || msg.includes("timeout");
 }
 
 // ─── Non-Streaming Completion ─────────────────────────
