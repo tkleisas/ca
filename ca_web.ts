@@ -227,6 +227,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monos
 .msg-content code { background: #1c2128; padding: 2px 5px; border-radius: 3px; font-size: 13px; }
 .msg-content pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px; overflow-x: auto; margin: 8px 0; }
 .msg-content pre code { background: none; padding: 0; }
+.msg-content .code-block-wrap { position: relative; margin: 8px 0; }
+.msg-content .copy-btn { position: absolute; top: 6px; right: 8px; background: #21262d; color: #8b949e; border: 1px solid #30363d; border-radius: 4px; padding: 2px 7px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+.msg-content .code-block-wrap:hover .copy-btn { opacity: 1; }
+.msg-content .copy-btn:hover { background: #30363d; color: #c9d1d9; }
+.msg-content .copy-btn.copied { background: #1a3d2e; border-color: #238636; color: #7ee787; }
 
 .tool-block { margin: 6px 0 6px 12px; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
 .tool-header { padding: 6px 10px; background: #1c2128; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; }
