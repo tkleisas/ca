@@ -269,7 +269,7 @@ When enabled (default), all file access is restricted to the project directory. 
 
 ### Command Safety
 
-19 dangerous patterns are detected and blocked:
+22 dangerous patterns are detected and blocked:
 
 | Pattern | Examples blocked |
 |---------|-----------------|
@@ -281,7 +281,10 @@ When enabled (default), all file access is restricted to the project directory. 
 | Disk duplication | `dd if=` |
 | Device writes | `> /dev/*` |
 | Curl/wget piped to shell | `curl ... \| bash` |
+| Download to device files | `curl ... > /dev/...` |
 | Force push | `git push --force`, `git push -f` |
+| Hard git reset | `git reset --hard` |
+| Discard file changes | `git checkout -- <file>` |
 | Docker prune | `docker rm`, `docker system prune` |
 | System shutdown | `shutdown`, `reboot` |
 | Force kill | `kill -9`, `pkill` |
