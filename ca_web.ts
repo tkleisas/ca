@@ -670,8 +670,16 @@ function showFileViewer(path, content, isMarkdown, isBinary, language, diagnosti
     contentDiv.innerHTML = renderFullMarkdown(content);
   } else {
     contentDiv.className = "";
-    const highlighted = highlightCode(content, language);
-    contentDiv.innerHTML = \`<pre><code>\${highlighted}</code></pre>\`;
+    const lines = content.split("\\n");
+    const digits = String(lines.length).length;
+    let numberedHtml = '<table class="code-table"><tbody>';
+    for (let i = 0; i < lines.length; i++) {
+      const num = String(i + 1).padStart(digits, " ");
+      const highlighted = highlightCode(lines[i], language);
+      numberedHtml += \`<tr><td class="ln">\${num}</td><td class="lc">\${highlighted || " "}</td></tr>\`;
+    }
+    numberedHtml += '</tbody></table>';
+    contentDiv.innerHTML = numberedHtml;
   }
 
   // Show diagnostics if available
