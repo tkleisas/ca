@@ -467,7 +467,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
           if ((boolKeys as readonly string[]).includes(key)) {
             const on = val === "on" || val === "1" || val === "true";
             const override: Partial<AgentConfig> = {};
-            (override as Record<string, unknown>)[key] = on;
+            (override as unknown as Record<string, unknown>)[key] = on;
             applyCliOverrides(override);
             (config as unknown as Record<string, unknown>)[key] = on;
             console.error(colorize(`${key} = ${on ? "on" : "off"}`, C.green));
