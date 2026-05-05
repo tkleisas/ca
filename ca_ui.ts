@@ -121,6 +121,7 @@ export class Spinner {
 // ─── Banner ────────────────────────────────────────────
 
 import type { AgentConfig } from "./ca_types.ts";
+import { VERSION } from "./ca_types.ts";
 
 export function printBanner(config: AgentConfig): void {
   const isTerminal = Deno.stderr.isTerminal();
@@ -129,7 +130,7 @@ export function printBanner(config: AgentConfig): void {
     isTerminal ? `\n${colorize(line, C.dim)}` : `\n${line}`,
   );
   console.error(
-    `${colorize(bold(`CA 0.1.0`), C.cyan)} ${dim("— Self-Evolving Coding Agent")}`,
+    `${colorize(bold(`CA ${VERSION}`), C.cyan)} ${dim("— Self-Evolving Coding Agent")}`,
   );
   console.error(
     `${dim("Model:")} ${config.model}  ${dim("Base:")} ${config.apiBase}`,
