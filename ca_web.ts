@@ -476,14 +476,20 @@ function handleEvent(ev) {
 
 document.getElementById("tab-context").addEventListener("click", () => switchTab("context"));
 document.getElementById("tab-files").addEventListener("click", () => switchTab("files"));
+document.getElementById("tab-sessions").addEventListener("click", () => switchTab("sessions"));
 
 function switchTab(tab) {
   document.getElementById("tab-context").classList.toggle("active", tab === "context");
   document.getElementById("tab-files").classList.toggle("active", tab === "files");
+  document.getElementById("tab-sessions").classList.toggle("active", tab === "sessions");
   document.getElementById("sb-panel-context").style.display = tab === "context" ? "" : "none";
   document.getElementById("sb-panel-files").style.display = tab === "files" ? "" : "none";
+  document.getElementById("sb-panel-sessions").style.display = tab === "sessions" ? "" : "none";
   if (tab === "files" && !currentBrowsePath) {
     ws.send(JSON.stringify({ type: "list_dir" }));
+  }
+  if (tab === "sessions") {
+    ws.send(JSON.stringify({ type: "session_list" }));
   }
 }
 
