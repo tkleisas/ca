@@ -1048,7 +1048,7 @@ function highlightCode(code, language) {
     if (code[i] === "\`") {
       let end = i + 1;
       while (end < code.length && code[end] !== "\`") {
-        if (code[end] === "\\") end++; // skip escaped
+        if (code[end] === "\\\\") end++; // skip escaped
         end++;
       }
       if (end < code.length) end++; // include closing \`
@@ -1060,7 +1060,7 @@ function highlightCode(code, language) {
     if (code[i] === '"') {
       let end = i + 1;
       while (end < code.length && code[end] !== '"') {
-        if (code[end] === "\\") end++;
+        if (code[end] === "\\\\") end++;
         end++;
       }
       if (end < code.length) end++;
@@ -1072,7 +1072,7 @@ function highlightCode(code, language) {
     if (code[i] === "'") {
       let end = i + 1;
       while (end < code.length && code[end] !== "'") {
-        if (code[end] === "\\") end++;
+        if (code[end] === "\\\\") end++;
         end++;
       }
       if (end < code.length) end++;
@@ -1084,7 +1084,7 @@ function highlightCode(code, language) {
     if (code[i] === "/" && i > 0 && /[=\(\[\{!\?:,&\|]/.test(code[i - 1])) {
       let end = i + 1;
       while (end < code.length && code[end] !== "/") {
-        if (code[end] === "\\") end++;
+        if (code[end] === "\\\\") end++;
         end++;
       }
       if (end < code.length) end++; // include closing /
