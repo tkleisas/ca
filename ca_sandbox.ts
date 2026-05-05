@@ -121,10 +121,9 @@ export function isCommandSafe(command: string): SafetyCheck {
     }
   }
 
-  // Block commands that try to escape the sandbox
-  if (trimmed.includes("$HOME") || trimmed.includes("$HOME")) {
-    // Allow if it's just reading, not modifying
-    if (/\brm\b|\bmv\b|\bcp\b.*\$HOME/.test(trimmed)) {
+  // Block commands that try to modify files in home directory
+  if (trimmed.includes("$HOME") || trimmed.includes("~")) {
+    if (/\brm\b|\bmv\b|\bcp\b.*[\$HOME~]/.test(trimmed)) {
       return { safe: false, reason: "Modifying files in \$HOME" };
     }
   }
