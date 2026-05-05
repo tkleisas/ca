@@ -576,8 +576,8 @@ function showFileViewer(path, content, isMarkdown, isBinary, language) {
     contentDiv.innerHTML = renderFullMarkdown(content);
   } else {
     contentDiv.className = "";
-    const langClass = language ? \` class="language-\${language}"\` : "";
-    contentDiv.innerHTML = \`<pre><code\${langClass}>\${escapeHtml(content)}</code></pre>\`;
+    const highlighted = highlightCode(content, language);
+    contentDiv.innerHTML = \`<pre><code>\${highlighted}</code></pre>\`;
   }
 
   overlay.style.display = "";
