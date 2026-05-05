@@ -461,15 +461,17 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
             continue;
           }
 
-          const boolKeys = ["stream", "thinking", "approve", "dryRun", "sandbox", "autoCommit"];
-          const numKeys = ["maxRounds", "maxRetries", "maxTokens", "temperature", "topP"];
+          const boolKeys = ["stream", "thinking", "approve", "dryRun", "sandbox", "autoCommit"] as const;
+          const numKeys = ["maxRounds", "maxRetries", "maxTokens", "temperature", "topP"] as const;
 
-          if (boolKeys.includes(key)) {
+          if ((boolKeys as readonly string[]).includes(key)) {
             const on = val === "on" || val === "1" || val === "true";
-            (config as any)[key] = on;
-            applyCliOverrides({ [key]: on } as any);
+            const override: Partial<AgentConfig> = {};
+            (override as Record<string, unknown>)[key] = on;
+            applyCliOverrides(override);
+            (config as Record<string, unknown>)[key] = on;
             console.error(colorize(`${key} = ${on ? "on" : "off"}`, C.green));
-          } else if (numKeys.includes(key)) {
+          } else if ((numKeys as readonly string[]).includes(key)) {
             const num = parseFloat(val);
             if (isNaN(num)) {
               console.error(`${colorize("✘", C.red)} ${key} requires a number.`);
@@ -477,8 +479,10 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
             }
             // temperature and topP are floats, others are ints
             const finalVal = (key === "temperature" || key === "topP") ? num : Math.floor(num);
-            (config as any)[key] = finalVal;
-            applyCliOverrides({ [key]: finalVal } as any);
+            const override: Partial<AgentConfig> = {};
+            (override as Record<string, unknown>)[key] = finalVal;
+            applyCliOverrides(override);
+            (config as Record<string, unknown>)[key] = finalVal;
             console.error(colorize(`${key} = ${finalVal}`, C.green));
           } else {
             console.error(`${colorize("✘", C.red)} Unknown key: ${key}`);
