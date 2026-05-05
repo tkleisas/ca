@@ -323,6 +323,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monos
 #viewer-content code { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 12px; }
 #viewer-content .viewer-binary { text-align: center; padding: 40px 20px; color: #8b949e; }
 #viewer-content .viewer-binary .icon { font-size: 48px; display: block; margin-bottom: 12px; }
+/* Line-numbered code table */
+.code-table { border-collapse: collapse; width: 100%; font-size: 12px; line-height: 1.5; }
+.code-table td { padding: 0; vertical-align: top; }
+.code-table .ln { color: #484f58; text-align: right; padding-right: 12px; user-select: none; min-width: 2.5em; white-space: pre; border-right: 1px solid #21262d; }
+.code-table .lc { padding-left: 12px; white-space: pre-wrap; word-break: break-word; }
 
 /* Markdown rendered in viewer */
 .md-rendered { line-height: 1.7; }
