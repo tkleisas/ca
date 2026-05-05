@@ -157,11 +157,7 @@ export async function* chatCompletionStream(
               if (!choice) {
                 // Final chunk with usage
                 if (json.usage) {
-                  finalUsage = {
-                    promptTokens: json.usage.prompt_tokens,
-                    completionTokens: json.usage.completion_tokens,
-                    totalTokens: json.usage.total_tokens,
-                  };
+                  finalUsage = parseUsage(json);
                 }
                 continue;
               }
