@@ -282,6 +282,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monos
 .sb-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
 .sb-panel { flex: 1; overflow-y: auto; }
 
+/* Session list */
+#sessions-list { padding: 0; font-size: 12px; }
+.session-entry { display: flex; align-items: center; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #21262d; gap: 6px; transition: background 0.1s; }
+.session-entry:hover { background: #1c2128; }
+.session-entry.active { background: #13233a; border-left: 2px solid #58a6ff; }
+.session-entry .ses-title { flex: 1; color: #c9d1d9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-entry .ses-meta { color: #484f58; font-size: 10px; white-space: nowrap; }
+.session-entry .ses-del { color: #484f58; cursor: pointer; visibility: hidden; font-size: 14px; padding: 0 2px; }
+.session-entry:hover .ses-del { visibility: visible; }
+.session-entry .ses-del:hover { color: #f85149; }
+#session-actions { padding: 8px 12px; border-top: 1px solid #30363d; }
+#new-session-btn { width: 100%; padding: 6px 10px; background: #21262d; color: #58a6ff; border: 1px solid #30363d; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; }
+#new-session-btn:hover { background: #30363d; }
+
 /* File browser */
 #fb-filter-wrap { padding: 6px 8px; border-bottom: 1px solid #21262d; }
 #fb-filter { width: 100%; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; padding: 5px 8px; font-size: 11px; font-family: monospace; outline: none; }
