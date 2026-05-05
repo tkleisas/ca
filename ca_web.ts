@@ -77,8 +77,9 @@ export async function runWebAgent(
 
     try {
       // Use streaming to get real-time content updates
-      const accum: { content: string; toolCalls: Map<number, { id: string; name: string; args: string }> } = {
+      const accum: { content: string; reasoning: string; toolCalls: Map<number, { id: string; name: string; args: string }> } = {
         content: "",
+        reasoning: "",
         toolCalls: new Map(),
       };
 
