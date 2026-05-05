@@ -129,6 +129,13 @@ Apply a targeted change using exact string matching. The `search` block must mat
 📝 apply_diff {"path": "ca.ts", "search": "const VERSION = \"0.1.0\";", "replace": "const VERSION = \"0.2.0\";"}
 ```
 
+### `restart_self(confirm)`
+Restart CA with an improved version of itself. Saves the conversation, runs type-checking (`deno check`) and tests (`deno test`), then spawns a new CA process. The `confirm` parameter must be `true` as a safety guard against accidental restarts.
+
+```
+🔄 restart_self {"confirm": true}
+```
+
 ## Interactive Commands
 
 | Command | Description |
