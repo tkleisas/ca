@@ -92,7 +92,7 @@ export async function chatCompletion(
 // ─── Streaming Completion ─────────────────────────────
 
 export interface StreamEvent {
-  type: "content" | "tool_call_start" | "tool_call_delta" | "done" | "error";
+  type: "content" | "reasoning" | "tool_call_start" | "tool_call_delta" | "done" | "error";
   content?: string;
   toolIndex?: number;
   toolId?: string;
