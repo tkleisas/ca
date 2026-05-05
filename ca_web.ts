@@ -1149,6 +1149,7 @@ ${CSS}
     <div id="sb-tabs">
       <button id="tab-context" class="sb-tab active">Context</button>
       <button id="tab-files" class="sb-tab">Files</button>
+      <button id="tab-sessions" class="sb-tab">Sessions</button>
     </div>
     <div id="sb-panel-context" class="sb-panel">
       <div id="sb-context"></div>
