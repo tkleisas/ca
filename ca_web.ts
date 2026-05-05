@@ -1158,6 +1158,12 @@ ${CSS}
       <div id="fb-filter-wrap"><input id="fb-filter" type="text" placeholder="Filter files…"></div>
       <div id="file-browser"></div>
     </div>
+    <div id="sb-panel-sessions" class="sb-panel" style="display:none">
+      <div id="sessions-list"></div>
+      <div id="session-actions">
+        <button id="new-session-btn">+ New Session</button>
+      </div>
+    </div>
     <div id="sb-stats"></div>
   </div>
   <div id="main">
