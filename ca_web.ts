@@ -1221,6 +1221,7 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
             model: config.model,
             base: config.apiBase,
             flags,
+            version: VERSION,
           }));
           socket.send(JSON.stringify({
             type: "context",
