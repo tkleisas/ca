@@ -28,6 +28,8 @@ Type \e on a new line to submit multi-line input. /help for commands.
 - **Token budget management** — warns at 85% and stops at 100% of the context window
 - **Conversation persistence** — save and load sessions to/from JSON files
 - **Streaming support** — SSE-based real-time response streaming
+- **Web UI** — browser-based interface with file browser, file viewer, and Markdown rendering
+- **Self-evolving** — can read and modify its own source code in `ca.ts` and `ca_*.ts` modules
 - **Configurable** — `.ca.json` files, environment variables, and CLI flags
 - **Self-evolving** — can read and modify its own source code in `ca.ts` and `ca_*.ts` modules
 
