@@ -461,30 +461,39 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
             continue;
           }
 
-          const boolKeys = ["stream", "thinking", "approve", "dryRun", "sandbox", "autoCommit"] as const;
-          const numKeys = ["maxRounds", "maxRetries", "maxTokens", "temperature", "topP"] as const;
-
-          if ((boolKeys as readonly string[]).includes(key)) {
-            const on = val === "on" || val === "1" || val === "true";
-            const override: Partial<AgentConfig> = {};
-            (override as unknown as Record<string, unknown>)[key] = on;
-            applyCliOverrides(override);
-            (config as unknown as Record<string, unknown>)[key] = on;
-            console.error(colorize(`${key} = ${on ? "on" : "off"}`, C.green));
-          } else if ((numKeys as readonly string[]).includes(key)) {
-            const num = parseFloat(val);
-            if (isNaN(num)) {
-              console.error(`${colorize("✘", C.red)} ${key} requires a number.`);
-              continue;
+          // Map string keys to config fields and their types
+          function setConfigValue(k: string, v: string): boolean {
+            switch (k) {
+              case "maxRounds": case "maxRetries": case "maxTokens": {
+                const n = parseInt(v);
+                if (isNaN(n)) return false;
+                const ov: Partial<AgentConfig> = {}; ov[k] = n; applyCliOverrides(ov);
+                console.error(colorize(`${k} = ${n}`, C.green));
+                return true;
+              }
+              case "temperature": case "topP": {
+                const n = parseFloat(v);
+                if (isNaN(n)) return false;
+                const ov: Partial<AgentConfig> = {}; (ov as unknown as Record<string, unknown>)[k] = n;
+                applyCliOverrides(ov);
+                console.error(colorize(`${k} = ${n}`, C.green));
+                return true;
+              }
+              case "stream": case "thinking": case "approve":
+              case "dryRun": case "sandbox": case "autoCommit": {
+                const on = v === "on" || v === "1" || v === "true";
+                const ov: Partial<AgentConfig> = {};
+                (ov as unknown as Record<string, unknown>)[k] = on;
+                applyCliOverrides(ov);
+                console.error(colorize(`${k} = ${on ? "on" : "off"}`, C.green));
+                return true;
+              }
+              default: return false;
             }
-            // temperature and topP are floats, others are ints
-            const finalVal = (key === "temperature" || key === "topP") ? num : Math.floor(num);
-            const override: Partial<AgentConfig> = {};
-            (override as unknown as Record<string, unknown>)[key] = finalVal;
-            applyCliOverrides(override);
-            (config as unknown as Record<string, unknown>)[key] = finalVal;
-            console.error(colorize(`${key} = ${finalVal}`, C.green));
-          } else {
+          }
+
+          const success = setConfigValue(key, val);
+          if (!success) {
             console.error(`${colorize("✘", C.red)} Unknown key: ${key}`);
             console.error(dim("  Valid keys: maxRounds, maxRetries, maxTokens, temperature,"));
             console.error(dim("             topP, stream, thinking, approve, dryRun,"));
