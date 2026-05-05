@@ -1030,7 +1030,7 @@ function highlightCode(code, language) {
     // Line comment //
     if (code[i] === "/" && code[i + 1] === "/") {
       let end = i;
-      while (end < code.length && code[end] !== "\n") end++;
+      while (end < code.length && code[end] !== "\\n") end++;
       tokens.push({ kind: "comment", text: code.substring(i, end) });
       i = end;
       continue;
