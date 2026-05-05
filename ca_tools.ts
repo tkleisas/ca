@@ -216,7 +216,11 @@ async function execReadFile(path: string, opts: ToolExecOptions): Promise<ToolEx
 
   try {
     const content = await Deno.readTextFile(path);
-    const lines = content.split("\n");
+    const maxLen = 50000; // Limit output to avoid context explosion
+    const truncated = content.length > maxLen
+      ? content.substring(0, maxLen) + `\n...[truncated at ${maxLen} bytes, total ${content.length} bytes]`
+      : content;
+    const lines = truncated.split("\n");
     const numbered = lines.map((line, i) => `${String(i + 1).padStart(4, " ")}| ${line}`);
     return { output: numbered.join("\n"), error: false };
   } catch (e) {
