@@ -95,6 +95,7 @@ const DANGEROUS_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /\b>:.*\/dev\//, reason: "Writing to device files" },
   { pattern: /\bcurl.*\|\s*(ba)?sh\b/, reason: "Piping curl to shell" },
   { pattern: /\bwget.*\|\s*(ba)?sh\b/, reason: "Piping wget to shell" },
+  { pattern: /\b(curl|wget).*>\s*\/dev\//, reason: "Downloading directly to device files" },
   { pattern: /\bgit\s+push\s+--force/, reason: "Force push to remote" },
   { pattern: /\bgit\s+push\s+-f\b/, reason: "Force push to remote" },
   { pattern: /\bgit\s+reset\s+--hard\b/, reason: "Hard git reset (destroys uncommitted work)" },
