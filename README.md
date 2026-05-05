@@ -456,12 +456,11 @@ deno test -A ca_test.ts --filter "isCommandSafe"
 36 tests covering:
 - Path sandboxing (7 tests)
 - Command safety (10 tests)
-- Token estimation (2 tests)
+- Token estimation (3 tests)
 - Tool definitions (2 tests)
 - System prompt building (6 tests)
 - UI utilities (3 tests)
 - Config validation (5 tests)
-- System content building (1 test)
 
 ## API Compatibility
 
