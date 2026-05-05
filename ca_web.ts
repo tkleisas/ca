@@ -516,7 +516,16 @@ ${CSS}
 <div id="app">
   <div id="sidebar">
     <div id="sb-header">CA ${VERSION}</div>
-    <div id="sb-context"></div>
+    <div id="sb-tabs">
+      <button id="tab-context" class="sb-tab active">Context</button>
+      <button id="tab-files" class="sb-tab">Files</button>
+    </div>
+    <div id="sb-panel-context" class="sb-panel">
+      <div id="sb-context"></div>
+    </div>
+    <div id="sb-panel-files" class="sb-panel" style="display:none">
+      <div id="file-browser"></div>
+    </div>
     <div id="sb-stats"></div>
   </div>
   <div id="main">
@@ -524,6 +533,15 @@ ${CSS}
     <div id="input-area">
       <textarea id="input" rows="2" placeholder="Send a message… (Ctrl+Enter to send)"></textarea>
       <button id="send-btn">Send</button>
+    </div>
+  </div>
+  <div id="viewer-overlay" style="display:none">
+    <div id="viewer">
+      <div id="viewer-header">
+        <span id="viewer-title"></span>
+        <button id="viewer-close">✕</button>
+      </div>
+      <div id="viewer-content"></div>
     </div>
   </div>
 </div>
