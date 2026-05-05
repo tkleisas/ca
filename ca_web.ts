@@ -9,7 +9,7 @@ import { isPathSafe } from "./ca_sandbox.ts";
 // ─── Web UI Event Types ─────────────────────────────────
 
 export type WebEvent =
-  | { type: "banner"; model: string; base: string; flags: string[] }
+  | { type: "banner"; model: string; base: string; flags: string[]; version: string }
   | { type: "context"; content: string }
   | { type: "thinking"; round: number; maxRounds: number }
   | { type: "token_warning"; used: number; max: number; pct: string }
