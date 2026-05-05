@@ -714,18 +714,15 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Web UI mode
+  // Web UI mode — starts as non-blocking background task
   if (webMode) {
     ensureApiKey(config);
-    console.error(`${colorize("🌐", C.cyan)} ${bold("Starting CA Web UI...")}`);
-    try {
-      await startWebServer(config, webPort);
-    } catch (e) {
+    console.error(`${colorize("🌐", C.cyan)} ${bold("Starting CA Web UI on http://localhost:" + webPort + " ...")}`);
+    // Fire and forget: web server runs in background; if it fails, log and continue
+    startWebServer(config, webPort).catch((e) => {
       console.error(`${colorize("✘", C.red)} Web server error: ${(e as Error).message}`);
-      console.error(dim("Falling back to interactive mode..."));
-      await interactive();
-    }
-    return;
+    });
+    // Don't return — fall through to interactive mode or single-shot below
   }
 
   // Single-shot mode
