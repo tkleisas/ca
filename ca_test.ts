@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno test --allow-read --allow-write --allow-run --allow-env
 
-import { assertEquals, assertStringIncludes, assert, assertFalse } from "jsr:@std/assert";
+import { assertEquals, assertStringIncludes, assert } from "jsr:@std/assert";
 import { isPathSafe, isCommandSafe } from "./ca_sandbox.ts";
 import { estimateTokens, estimateMessagesTokens } from "./ca_client.ts";
 import { colorize, dim, bold } from "./ca_ui.ts";
