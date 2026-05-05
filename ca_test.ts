@@ -229,3 +229,67 @@ Deno.test("bold - returns a string", () => {
   assert(typeof result === "string");
   assert(result.includes("test"));
 });
+
+// ─── Config Validation Tests ───────────────────────────
+
+Deno.test("validateConfig - no warnings for valid config", () => {
+  const config = makeTestConfig();
+  const warnings = validateConfig(config);
+  assertEquals(warnings.length, 0);
+});
+
+Deno.test("validateConfig - warns on high temperature", () => {
+  const config = makeTestConfig({ temperature: 5 });
+  const warnings = validateConfig(config);
+  assert(warnings.length > 0);
+  assertStringIncludes(warnings[0], "Temperature");
+});
+
+Deno.test("validateConfig - warns on very low maxTokens", () => {
+  const config = makeTestConfig({ maxTokens: 50 });
+  const warnings = validateConfig(config);
+  assert(warnings.length > 0);
+});
+
+Deno.test("validateConfig - warns on invalid topP", () => {
+  const config = makeTestConfig({ topP: 2 });
+  const warnings = validateConfig(config);
+  assert(warnings.length > 0);
+  assertStringIncludes(warnings[0], "topP");
+});
+
+Deno.test("validateConfig - warns on invalid topLogprobs", () => {
+  const config = makeTestConfig({ topLogprobs: 25 });
+  const warnings = validateConfig(config);
+  assert(warnings.length > 0);
+});
+
+// ─── Sandbox: Command Safety (tilde) ───────────────────
+
+Deno.test("isCommandSafe - blocks rm with tilde", () => {
+  const result = isCommandSafe("rm ~/.bashrc");
+  assertEquals(result.safe, false);
+});
+
+Deno.test("isCommandSafe - blocks mv with $HOME", () => {
+  const result = isCommandSafe("mv /tmp/evil $HOME/.ssh/authorized_keys");
+  assertEquals(result.safe, false);
+});
+
+// ─── buildSystemContent Tests ──────────────────────────
+
+Deno.test("buildSystemContent - returns string with context", async () => {
+  const config = makeTestConfig();
+  const result = await buildSystemContent(config, Deno.cwd());
+  assert(typeof result === "string");
+  assert(result.length > 0);
+  assertStringIncludes(result, "CA 0.1.0");
+  assertStringIncludes(result, "Working directory:");
+});
+
+Deno.test("buildSystemContent - works without sandbox", async () => {
+  const config = makeTestConfig({ sandbox: false });
+  const result = await buildSystemContent(config, Deno.cwd());
+  assert(typeof result === "string");
+  assert(result.length > 0);
+});
