@@ -128,7 +128,10 @@ export async function* chatCompletionStream(
 
       if (!response.ok) {
         const text = await response.text();
-        if (await handleRetryableError(response, attempt, maxRetries)) continue;
+        if (isRetryableStatus(response.status) && attempt < maxRetries - 1) {
+          await waitForRetry(attempt, response.status);
+          continue;
+        }
         yield { type: "error", error: `API ${response.status}: ${text.substring(0, 500)}` };
         return;
       }
