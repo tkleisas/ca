@@ -440,6 +440,19 @@ function switchTab(tab) {
 
 // ─── File Browser ───────────────────────────────────────
 
+let currentEntries = [];
+let currentBrowseFullPath = "";
+
+document.getElementById("fb-filter").addEventListener("input", (e) => {
+  const filter = e.target.value.toLowerCase();
+  if (currentEntries.length > 0) {
+    const filtered = filter
+      ? currentEntries.filter(entry => entry.name.toLowerCase().includes(filter))
+      : currentEntries;
+    renderFileBrowserEntries(currentBrowseFullPath, filtered);
+  }
+});
+
 const FILE_ICONS = {
   ts: "🟦", tsx: "⚛️", js: "🟨", jsx: "⚛️", json: "📋",
   md: "📝", markdown: "📝",
