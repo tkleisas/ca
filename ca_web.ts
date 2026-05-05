@@ -1230,6 +1230,57 @@ async function listDirEntries(dirPath: string): Promise<DirEntry[]> {
   return entries;
 }
 
+async function runTsDiagnostics(filePath: string, cwd: string): Promise<Diagnostic[]> {
+  const diagnostics: Diagnostic[] = [];
+  try {
+    const cmd = new Deno.Command("deno", {
+      args: ["check", "--quiet", filePath],
+      cwd,
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const { stdout, stderr, code } = await cmd.output();
+    if (code === 0) return diagnostics;
+    const output = new TextDecoder().decode(stderr.length > 0 ? stderr : stdout);
+    // Parse deno check output lines like: "error: TS1234: message" or "  at file:///path/file.ts:10:5"
+    const lines = output.split("\n");
+    for (const line of lines) {
+      // Match: "error: TS2345: Argument of type..."
+      let match = line.match(/^(error|warning|info)\s*:\s*(TS\d+)?\s*:?\s*(.+)$/i);
+      if (match) {
+        const severity = match[1].toLowerCase() as "error" | "warning" | "info";
+        const code = match[2] || undefined;
+        const message = match[3].trim();
+        // The line/column info comes from the "at" line, so we store with 0,0 for now
+        diagnostics.push({ message, line: 0, column: 0, severity, code });
+        continue;
+      }
+      // Match location: "    at file:///path/to/file.ts:10:5"
+      match = line.match(/at\s+.*?:(\d+):(\d+)/);
+      if (match && diagnostics.length > 0) {
+        const last = diagnostics[diagnostics.length - 1];
+        if (last.line === 0) {
+          last.line = parseInt(match[1]);
+          last.column = parseInt(match[2]);
+        }
+      }
+    }
+    // If no structured output found, try simpler format
+    if (diagnostics.length === 0 && output.trim()) {
+      // Some versions output: "error: The module ..." on one line
+      // Just capture the first 5 meaningful lines
+      const errLines = output.trim().split("\n").filter(l => l.trim()).slice(0, 5);
+      for (const l of errLines) {
+        diagnostics.push({ message: l.trim(), line: 0, column: 0, severity: "error" });
+      }
+    }
+  } catch (e) {
+    // deno not available or other error
+    diagnostics.push({ message: `Could not run diagnostics: ${(e as Error).message}`, line: 0, column: 0, severity: "warning" });
+  }
+  return diagnostics;
+}
+
 async function readFileForWeb(filePath: string): Promise<{ content: string; isBinary: boolean; isMarkdown: boolean; language: string }> {
   const info = getFileInfo(filePath);
   if (info.isBinary) {
