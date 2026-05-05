@@ -1411,6 +1411,53 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
                   await initSession();
                 }, 500);
               }
+            } else if (data.type === "session_new") {
+              // Save current session first
+              await autoSave();
+              // Create new session
+              const id = await createSession(Deno.cwd(), config.model);
+              currentSessionId = id;
+              systemContent = await buildSystemContent(config, Deno.cwd());
+              messages = [{ role: "system", content: systemContent }];
+              const sessions = await listSessions(Deno.cwd());
+              socket.send(JSON.stringify({ type: "session_list", sessions, currentId: id }));
+              socket.send(JSON.stringify({ type: "session_switched", id, messages: [] }));
+            } else if (data.type === "session_switch") {
+              const targetId = data.id as string;
+              if (!targetId || targetId === currentSessionId) return;
+              await autoSave();
+              try {
+                const loaded = await loadSession(Deno.cwd(), targetId);
+                if (loaded.length > 0 && loaded[0].role === "system") {
+                  loaded[0].content = await buildSystemContent(config, Deno.cwd());
+                }
+                messages = loaded;
+                currentSessionId = targetId;
+                socket.send(JSON.stringify({
+                  type: "session_switched",
+                  id: targetId,
+                  messages: loaded.filter(m => m.role !== "system").map(m => ({
+                    role: m.role,
+                    content: m.content?.substring(0, 200) ?? null,
+                  })),
+                }));
+                // Clear UI and show conversation summary
+              } catch (e) {
+                socket.send(JSON.stringify({ type: "error", message: `Failed to load session: ${(e as Error).message}` }));
+              }
+            } else if (data.type === "session_delete") {
+              const targetId = data.id as string;
+              if (!targetId) return;
+              await deleteSession(Deno.cwd(), targetId);
+              if (targetId === currentSessionId) {
+                // Create a new session if current was deleted
+                const id = await createSession(Deno.cwd(), config.model);
+                currentSessionId = id;
+                systemContent = await buildSystemContent(config, Deno.cwd());
+                messages = [{ role: "system", content: systemContent }];
+              }
+              const sessions = await listSessions(Deno.cwd());
+              socket.send(JSON.stringify({ type: "session_list", sessions, currentId: currentSessionId ?? "" }));
             } else if (data.type === "list_dir") {
               const reqPath = (data.path as string) || Deno.cwd();
               const safety = isPathSafe(reqPath, Deno.cwd(), config.sandbox);
