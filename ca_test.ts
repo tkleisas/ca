@@ -187,7 +187,7 @@ Deno.test("buildSystemPrompt - includes tool list", () => {
   assertStringIncludes(prompt, "read_file");
   assertStringIncludes(prompt, "write_file");
   assertStringIncludes(prompt, "search_files");
-  assertStringIncludes(prompt, "CA 0.2.1");
+  assertStringIncludes(prompt, "CA 0.2.2");
 });
 
 Deno.test("buildSystemPrompt - uses custom prompt", () => {
