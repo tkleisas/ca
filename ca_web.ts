@@ -380,7 +380,10 @@ function handleEvent(ev) {
       break;
 
     case "file_content":
-      showFileViewer(ev.path, ev.content, ev.isMarkdown, ev.isBinary, ev.language);
+      showFileViewer(ev.path, ev.content, ev.isMarkdown, ev.isBinary, ev.language, ev.diagnostics);
+      break;
+    case "diagnostics":
+      updateViewerDiagnostics(ev.diagnostics);
       break;
 
     case "thinking":
