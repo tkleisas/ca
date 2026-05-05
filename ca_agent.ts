@@ -332,3 +332,144 @@ export async function loadConversation(filepath: string): Promise<ChatMessage[]>
   );
   return data.messages;
 }
+
+// ─── Session Store (multi-session persistence) ──────────
+
+export interface SessionMeta {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+  model: string;
+}
+
+export interface SessionIndex {
+  sessions: SessionMeta[];
+}
+
+function getStoreDir(cwd: string): string {
+  return `${cwd}/.ca/conversations`;
+}
+
+function getIndexPath(cwd: string): string {
+  return `${getStoreDir(cwd)}/index.json`;
+}
+
+function getSessionPath(cwd: string, id: string): string {
+  return `${getStoreDir(cwd)}/${id}.json`;
+}
+
+async function ensureStoreDir(cwd: string): Promise<void> {
+  try {
+    await Deno.mkdir(getStoreDir(cwd), { recursive: true });
+  } catch { /* already exists */ }
+}
+
+async function readIndex(cwd: string): Promise<SessionIndex> {
+  try {
+    const raw = await Deno.readTextFile(getIndexPath(cwd));
+    return JSON.parse(raw);
+  } catch {
+    return { sessions: [] };
+  }
+}
+
+async function writeIndex(cwd: string, index: SessionIndex): Promise<void> {
+  await ensureStoreDir(cwd);
+  await Deno.writeTextFile(getIndexPath(cwd), JSON.stringify(index, null, 2));
+}
+
+export async function listSessions(cwd: string): Promise<SessionMeta[]> {
+  const index = await readIndex(cwd);
+  return index.sessions.sort((a, b) =>
+    new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+}
+
+export async function createSession(
+  cwd: string,
+  model: string,
+  title?: string,
+): Promise<string> {
+  const id = crypto.randomUUID().substring(0, 8);
+  const now = new Date().toISOString();
+  const index = await readIndex(cwd);
+  index.sessions.push({
+    id,
+    title: title ?? `Session ${id}`,
+    createdAt: now,
+    updatedAt: now,
+    messageCount: 0,
+    model,
+  });
+  await writeIndex(cwd, index);
+  // Create empty session file
+  await Deno.writeTextFile(getSessionPath(cwd, id), JSON.stringify({
+    version: VERSION,
+    timestamp: now,
+    messages: [],
+  }, null, 2));
+  return id;
+}
+
+export async function saveSession(
+  cwd: string,
+  id: string,
+  messages: ChatMessage[],
+  model: string,
+): Promise<void> {
+  await ensureStoreDir(cwd);
+  const exportData: ConversationExport = {
+    version: VERSION,
+    timestamp: new Date().toISOString(),
+    messages,
+  };
+  await Deno.writeTextFile(getSessionPath(cwd, id), JSON.stringify(exportData, null, 2));
+
+  // Update index
+  const index = await readIndex(cwd);
+  const session = index.sessions.find((s) => s.id === id);
+  if (session) {
+    session.updatedAt = new Date().toISOString();
+    session.messageCount = messages.length;
+    session.model = model;
+    // Update title from first user message
+    if (session.title.startsWith("Session ") && messages.length > 0) {
+      const firstUser = messages.find((m) => m.role === "user");
+      if (firstUser?.content) {
+        session.title = firstUser.content.substring(0, 80).replace(/\n/g, " ");
+      }
+    }
+    await writeIndex(cwd, index);
+  }
+}
+
+export async function loadSession(cwd: string, id: string): Promise<ChatMessage[]> {
+  const raw = await Deno.readTextFile(getSessionPath(cwd, id));
+  const data: ConversationExport = JSON.parse(raw);
+  if (!data.version || !Array.isArray(data.messages)) {
+    throw new Error("Invalid session file format");
+  }
+  return data.messages;
+}
+
+export async function deleteSession(cwd: string, id: string): Promise<void> {
+  // Remove session file
+  try {
+    await Deno.remove(getSessionPath(cwd, id));
+  } catch { /* already gone */ }
+  // Remove from index
+  const index = await readIndex(cwd);
+  index.sessions = index.sessions.filter((s) => s.id !== id);
+  await writeIndex(cwd, index);
+}
+
+export async function updateSessionTitle(cwd: string, id: string, title: string): Promise<void> {
+  const index = await readIndex(cwd);
+  const session = index.sessions.find((s) => s.id === id);
+  if (session) {
+    session.title = title;
+    await writeIndex(cwd, index);
+  }
+}

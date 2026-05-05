@@ -93,6 +93,7 @@ export interface EnabledTools {
   ask_user: boolean;
   apply_diff: boolean;
   restart_self: boolean;
+  test_web: boolean;
 }
 
 // ─── Project Config File ─────────────────────────────

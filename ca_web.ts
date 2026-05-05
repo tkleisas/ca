@@ -1098,7 +1098,7 @@ function highlightCode(code, language) {
     if (/[0-9]/.test(code[i])) {
       let end = i;
       if (code[i] === "0" && (code[i + 1] === "x" || code[i + 1] === "X" || code[i + 1] === "b" || code[i + 1] === "B" || code[i + 1] === "o" || code[i + 1] === "O")) end += 2;
-      while (end < code.length && /[0-9a-fA-F\._\-\+]/.test(code[end])) end++;
+      while (end < code.length && /[0-9a-fA-F\._\+-]/.test(code[end])) end++;
       tokens.push({ kind: "number", text: code.substring(i, end) });
       i = end;
       continue;

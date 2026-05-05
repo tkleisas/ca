@@ -719,3 +719,25 @@ async function execRestartSelf(confirm: boolean, opts: ToolExecOptions): Promise
   // Signal the agent loop to perform the actual restart
   return { output: "RESTART_READY", error: false };
 }
+
+// ─── Test Web ────────────────────────────────────────────
+
+async function execTestWeb(port: number, playwright: boolean, quick: boolean, opts: ToolExecOptions): Promise<ToolExecResult> {
+  if (opts.dryRun) return { output: `[dry-run] Would run web tests on port ${port}`, error: false };
+
+  console.error(`\n${colorize("🧪", C.cyan)} ${bold("Web Tests")} on port ${port}...`);
+
+  try {
+    const { runAllWebTests, formatTestResults } = await import("./ca_playwright.ts");
+    const { getConfig } = await import("./ca_config.ts");
+    const config = getConfig();
+    const results = await runAllWebTests(port, config, { playwright, quick });
+    const output = formatTestResults(results);
+
+    console.error(`\n${colorize(results.totalFailed === 0 ? "✔" : "✘", results.totalFailed === 0 ? C.green : C.red)} ${bold("Web Tests:")} ${results.totalPassed}/${results.totalPassed + results.totalFailed} passed`);
+
+    return { output, error: results.totalFailed > 0 };
+  } catch (e) {
+    return { output: `Error running web tests: ${(e as Error).message}`, error: true };
+  }
+}

@@ -712,9 +712,10 @@ async function main(): Promise<void> {
   if (webMode) {
     ensureApiKey(config);
     console.error(`${colorize("🌐", C.cyan)} ${bold("Starting CA Web UI on http://localhost:" + webPort + " ...")}`);
+    const webServer = startWebServer(config, webPort);
     // Fire and forget: web server runs in background; if it fails, log and continue
-    startWebServer(config, webPort).catch((e) => {
-      console.error(`${colorize("✘", C.red)} Web server error: ${(e as Error).message}`);
+    webServer.done.catch((e: Error) => {
+      console.error(`${colorize("✘", C.red)} Web server error: ${e.message}`);
     });
     // Don't return — fall through to interactive mode or single-shot below
   }

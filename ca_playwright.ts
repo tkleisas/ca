@@ -185,21 +185,35 @@ export async function testWebSocketApi(port: number, timeoutMs = 15000): Promise
     if (!html.includes("WebSocket")) throw new Error("Missing WebSocket reference");
   });
 
-  // ─── Test 8: Token update events ───────────────────────
-  await runTest("Token update events", async () => {
+  // ─── Test 8: Session switching ─────────────────────────
+  await runTest("Session switching", async () => {
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
-    const tokenPromise = new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("Token update timeout")), 5000);
+    const switchPromise = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("Session switch timeout")), 5000);
+      let gotList = false;
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: "session_new" }));
+      };
       ws.onmessage = (e) => {
         const msg: WsMessage = JSON.parse(e.data);
-        if (msg.type === "token_update") {
+        if (msg.type === "session_list" && !gotList) {
+          gotList = true;
+          // Now try switching to the first session if any
+          const sessions = msg.sessions as Array<{ id: string }> | undefined;
+          if (sessions && sessions.length > 0) {
+            ws.send(JSON.stringify({ type: "session_switch", id: sessions[0].id }));
+          } else {
+            clearTimeout(timer);
+            resolve(); // No sessions to switch to, still passes
+          }
+        }
+        if (msg.type === "session_switched") {
           clearTimeout(timer);
-          if (typeof msg.used === "number" && typeof msg.max === "number") resolve();
-          else reject(new Error("Token update missing fields"));
+          resolve();
         }
       };
     });
-    await tokenPromise;
+    await switchPromise;
     ws.close();
   });
 

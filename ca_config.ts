@@ -32,6 +32,7 @@ const DEFAULTS: AgentConfig = {
     ask_user: true,
     apply_diff: true,
     restart_self: true,
+    test_web: true,
   },
   systemPrompt: undefined,
   systemPromptFile: undefined,

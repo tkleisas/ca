@@ -26,6 +26,7 @@ Type \e on a new line to submit multi-line input. /help for commands.
 - **Parallel tool execution** — multiple independent tool calls run concurrently
 - **Project context injection** — auto-detects git branch, changed files, directory structure, and language
 - **Token budget management** — warns at 85% and stops at 100% of the context window
+- **Session management** — create, switch, and delete named sessions; auto-save after each exchange; browse sessions in web UI
 - **Conversation persistence** — save and load sessions to/from JSON files
 - **Streaming support** — SSE-based real-time response streaming
 - **Web UI** — browser-based interface with file browser, syntax-highlighted file viewer, TypeScript diagnostics, token display, session management, and Markdown rendering

@@ -149,7 +149,7 @@ function makeTestConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
 Deno.test("buildToolDefs - includes all tools by default", () => {
   const config = makeTestConfig();
   const tools = buildToolDefs(config);
-  assertEquals(tools.length, 8);
+  assertEquals(tools.length, 9);
   const names = tools.map(t => t.function.name);
   assertEquals(names.includes("read_file"), true);
   assertEquals(names.includes("write_file"), true);
@@ -159,6 +159,7 @@ Deno.test("buildToolDefs - includes all tools by default", () => {
   assertEquals(names.includes("ask_user"), true);
   assertEquals(names.includes("apply_diff"), true);
   assertEquals(names.includes("restart_self"), true);
+  assertEquals(names.includes("test_web"), true);
 });
 
 Deno.test("buildToolDefs - respects disabled tools", () => {
