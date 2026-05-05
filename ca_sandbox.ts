@@ -97,6 +97,8 @@ const DANGEROUS_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /\bwget.*\|\s*(ba)?sh\b/, reason: "Piping wget to shell" },
   { pattern: /\bgit\s+push\s+--force/, reason: "Force push to remote" },
   { pattern: /\bgit\s+push\s+-f\b/, reason: "Force push to remote" },
+  { pattern: /\bgit\s+reset\s+--hard\b/, reason: "Hard git reset (destroys uncommitted work)" },
+  { pattern: /\bgit\s+checkout\s+--\s/, reason: "Discard file changes (git checkout -- <file>)" },
   { pattern: /\bdocker\s+rm\b/, reason: "Docker container/image removal" },
   { pattern: /\bdocker\s+system\s+prune\b/, reason: "Docker system prune" },
   { pattern: /\bshutdown\b/, reason: "System shutdown" },
