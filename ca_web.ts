@@ -598,7 +598,7 @@ function renderFullMarkdown(text) {
   });
 
   // Inline code
-  html = html.replace(/\`([^\`\n]+)\`/g, '<code>$1</code>');
+  html = html.replace(/\`([^\`\\n]+)\`/g, '<code>$1</code>');
 
   // Headings
   html = html.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
