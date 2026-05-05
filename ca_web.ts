@@ -20,7 +20,16 @@ export type WebEvent =
   | { type: "error"; message: string }
   | { type: "done"; rounds: number; usage?: UsageInfo }
   | { type: "restart" }
-  | { type: "aborted" };
+  | { type: "aborted" }
+  // File browser events
+  | { type: "dir_listing"; path: string; entries: DirEntry[] }
+  | { type: "file_content"; path: string; content: string; isMarkdown: boolean; isBinary: boolean; language: string };
+
+export interface DirEntry {
+  name: string;
+  isDirectory: boolean;
+  size: number;
+}
 
 // ─── Streaming Agent Loop ──────────────────────────────
 
