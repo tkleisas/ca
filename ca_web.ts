@@ -534,6 +534,85 @@ ${JS}
 </body>
 </html>`;
 
+// ─── File Browser Helpers ───────────────────────────────
+
+const BINARY_EXTENSIONS = new Set([
+  "png", "jpg", "jpeg", "gif", "ico", "svg", "webp",
+  "pdf", "zip", "tar", "gz", "bz2", "xz", "7z", "rar",
+  "exe", "dll", "so", "dylib", "wasm", "bin",
+  "mp3", "mp4", "wav", "ogg", "avi", "mov", "webm",
+  "ttf", "otf", "woff", "woff2", "eot",
+  "db", "sqlite", "sqlite3",
+]);
+
+const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "mdown", "mkd", "mkdn"]);
+
+const CODE_EXTENSIONS: Record<string, string> = {
+  ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx",
+  py: "python", rs: "rust", go: "go", java: "java", c: "c",
+  cpp: "cpp", h: "c", hpp: "cpp", cs: "csharp", rb: "ruby",
+  php: "php", swift: "swift", kt: "kotlin", scala: "scala",
+  sh: "bash", bash: "bash", zsh: "bash", fish: "fish",
+  sql: "sql", html: "html", css: "css", scss: "scss",
+  json: "json", xml: "xml", yaml: "yaml", yml: "yaml",
+  toml: "toml", ini: "ini", cfg: "ini", env: "sh",
+  dockerfile: "dockerfile", makefile: "makefile",
+  vue: "html", svelte: "html", astro: "html",
+};
+
+function getFileInfo(name: string): { isBinary: boolean; isMarkdown: boolean; language: string } {
+  const ext = name.includes(".") ? name.split(".").pop()?.toLowerCase() ?? "" : "";
+  const base = name.toLowerCase();
+  if (base === "dockerfile") return { isBinary: false, isMarkdown: false, language: "dockerfile" };
+  if (base === "makefile") return { isBinary: false, isMarkdown: false, language: "makefile" };
+  return {
+    isBinary: BINARY_EXTENSIONS.has(ext),
+    isMarkdown: MARKDOWN_EXTENSIONS.has(ext),
+    language: CODE_EXTENSIONS[ext] ?? "",
+  };
+}
+
+async function listDirEntries(dirPath: string): Promise<DirEntry[]> {
+  const entries: DirEntry[] = [];
+  try {
+    for await (const entry of Deno.readDir(dirPath)) {
+      if (entry.name.startsWith(".") && entry.name !== ".ca.json") continue;
+      let size = 0;
+      if (entry.isFile) {
+        try {
+          const info = await Deno.stat(`${dirPath}/${entry.name}`);
+          size = info.size;
+        } catch { /* ignore stat errors */ }
+      }
+      entries.push({
+        name: entry.name,
+        isDirectory: entry.isDirectory,
+        size,
+      });
+    }
+  } catch { /* permission error, return empty */ }
+  entries.sort((a, b) => {
+    if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  return entries;
+}
+
+async function readFileForWeb(filePath: string): Promise<{ content: string; isBinary: boolean; isMarkdown: boolean; language: string }> {
+  const info = getFileInfo(filePath);
+  if (info.isBinary) {
+    return { content: "", isBinary: true, isMarkdown: false, language: "" };
+  }
+  try {
+    const raw = await Deno.readTextFile(filePath);
+    // Limit to 500KB
+    const content = raw.length > 500_000 ? raw.substring(0, 500_000) + "\n...[truncated]" : raw;
+    return { content, isBinary: false, isMarkdown: info.isMarkdown, language: info.language };
+  } catch (e) {
+    return { content: `Error reading file: ${(e as Error).message}`, isBinary: true, isMarkdown: false, language: "" };
+  }
+}
+
 // ─── HTTP + WebSocket Server ───────────────────────────
 
 export async function startWebServer(config: AgentConfig, port: number): Promise<void> {
