@@ -480,6 +480,14 @@ function formatFileSize(bytes) {
 }
 
 function renderFileBrowser(path, entries) {
+  currentEntries = entries;
+  currentBrowseFullPath = path;
+  // Clear filter when navigating
+  document.getElementById("fb-filter").value = "";
+  renderFileBrowserEntries(path, entries);
+}
+
+function renderFileBrowserEntries(path, entries) {
   const fb = document.getElementById("file-browser");
   let html = '';
 
@@ -501,7 +509,10 @@ function renderFileBrowser(path, entries) {
   }
 
   if (entries.length === 0) {
-    html += '<div class="fb-empty">(empty directory)</div>';
+    const filterVal = document.getElementById("fb-filter").value;
+    html += filterVal
+      ? \`<div class="fb-empty">no files matching "\${escapeHtml(filterVal)}"</div>\`
+      : '<div class="fb-empty">(empty directory)</div>';
   } else {
     for (const entry of entries) {
       const icon = getFileIcon(entry.name, entry.isDirectory);
