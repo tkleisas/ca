@@ -255,6 +255,8 @@ Options:
   --no-sandbox                    Disable path sandboxing
   --approve                       Require approval for writes & commands
   --dry-run                       Show what would be done without doing it
+  --web                           Start web UI on localhost:9420
+  --web-port <port>               Web UI port (default: 9420)
 ```
 
 ## Safety
