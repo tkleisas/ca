@@ -6,6 +6,7 @@ import { initConfig, getConfig, applyCliOverrides } from "./ca_config.ts";
 import { buildSystemContent, run, saveConversation, loadConversation } from "./ca_agent.ts";
 import type { RunResult } from "./ca_agent.ts";
 import { C, colorize, dim, bold, printBanner, separator, highlightCode } from "./ca_ui.ts";
+import { startWebServer } from "./ca_web.ts";
 
 // ─── Global State ──────────────────────────────────────
 
