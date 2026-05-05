@@ -651,6 +651,12 @@ async function main(): Promise<void> {
     } else if (a === "--dry-run") {
       cliOverrides.dryRun = true;
       i++;
+    } else if (a === "--web") {
+      webMode = true;
+      i++;
+    } else if (a === "--web-port" && args[i + 1]) {
+      webPort = parseInt(args[++i]);
+      i++;
     } else {
       promptParts.push(a);
       i++;
