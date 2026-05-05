@@ -600,10 +600,10 @@ function showFileViewer(path, content, isMarkdown, isBinary, language, diagnosti
   }
 
   // Show diagnostics if available
-  if (diagnostics && diagnostics.length > 0) {
+  if (diagnostics !== undefined) {
     renderDiagnostics(diagnostics);
   } else if (isTS) {
-    // Placeholder for diagnostics
+    // Diagnostics haven't loaded yet (shouldn't normally happen)
     const diagDiv = document.createElement("div");
     diagDiv.id = "viewer-diagnostics";
     diagDiv.style.cssText = "margin-top:12px;font-size:12px;color:#484f58;font-style:italic";
