@@ -135,6 +135,25 @@ export function buildToolDefs(config: AgentConfig): ToolDef[] {
     });
   }
 
+  if (config.tools.test_web) {
+    defs.push({
+      type: "function",
+      function: {
+        name: "test_web",
+        description: "Test the CA web UI by starting it on a given port, running WebSocket API tests (fast, zero deps), and optionally Playwright browser tests. Returns test results. Use to verify the web interface works correctly.",
+        parameters: {
+          type: "object",
+          properties: {
+            port: { type: "number", description: "Port to run the web server on (default: 9420)" },
+            playwright: { type: "boolean", description: "Also run full Playwright browser tests (default: false). Requires: npx playwright install chromium" },
+            quick: { type: "boolean", description: "Quick mode: skip slow browser tests (default: false)" },
+          },
+          required: [],
+        },
+      },
+    });
+  }
+
   if (config.tools.restart_self) {
     defs.push({
       type: "function",
