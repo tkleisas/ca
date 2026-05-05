@@ -1060,7 +1060,8 @@ ${CSS}
 <body>
 <div id="app">
   <div id="sidebar">
-    <div id="sb-header">CA ${VERSION}</div>
+    <div id="sb-header">CA</div>
+    <div id="sb-version">v${VERSION}</div>
     <div id="sb-tabs">
       <button id="tab-context" class="sb-tab active">Context</button>
       <button id="tab-files" class="sb-tab">Files</button>
