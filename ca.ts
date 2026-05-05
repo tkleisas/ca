@@ -718,7 +718,13 @@ async function main(): Promise<void> {
   if (webMode) {
     ensureApiKey(config);
     console.error(`${colorize("🌐", C.cyan)} ${bold("Starting CA Web UI...")}`);
-    await startWebServer(config, webPort);
+    try {
+      await startWebServer(config, webPort);
+    } catch (e) {
+      console.error(`${colorize("✘", C.red)} Web server error: ${(e as Error).message}`);
+      console.error(dim("Falling back to interactive mode..."));
+      await interactive();
+    }
     return;
   }
 
