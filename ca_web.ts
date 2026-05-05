@@ -35,6 +35,14 @@ export interface DirEntry {
   size: number;
 }
 
+export interface Diagnostic {
+  message: string;
+  line: number;
+  column: number;
+  severity: "error" | "warning" | "info";
+  code?: string;
+}
+
 // ─── Streaming Agent Loop ──────────────────────────────
 
 export interface WebAgentOptions {
