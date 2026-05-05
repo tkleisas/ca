@@ -314,9 +314,12 @@ const ws = new WebSocket(\`ws://\${location.host}/ws\`);
 let currentAssistant = null;
 let currentToolBlocks = new Map();
 let streaming = false;
+let currentBrowsePath = null;
 
 ws.onopen = () => {
   ws.send(JSON.stringify({ type: "init" }));
+  // Load initial file listing
+  ws.send(JSON.stringify({ type: "list_dir" }));
 };
 
 ws.onmessage = (e) => {
@@ -341,6 +344,15 @@ function handleEvent(ev) {
 
     case "context":
       document.getElementById("sb-context").textContent = ev.content;
+      break;
+
+    case "dir_listing":
+      currentBrowsePath = ev.path;
+      renderFileBrowser(ev.path, ev.entries);
+      break;
+
+    case "file_content":
+      showFileViewer(ev.path, ev.content, ev.isMarkdown, ev.isBinary, ev.language);
       break;
 
     case "thinking":
@@ -407,6 +419,225 @@ function handleEvent(ev) {
   scrollDown();
 }
 
+// ─── Tab switching ──────────────────────────────────────
+
+document.getElementById("tab-context").addEventListener("click", () => switchTab("context"));
+document.getElementById("tab-files").addEventListener("click", () => switchTab("files"));
+
+function switchTab(tab) {
+  document.getElementById("tab-context").classList.toggle("active", tab === "context");
+  document.getElementById("tab-files").classList.toggle("active", tab === "files");
+  document.getElementById("sb-panel-context").style.display = tab === "context" ? "" : "none";
+  document.getElementById("sb-panel-files").style.display = tab === "files" ? "" : "none";
+  if (tab === "files" && !currentBrowsePath) {
+    ws.send(JSON.stringify({ type: "list_dir" }));
+  }
+}
+
+// ─── File Browser ───────────────────────────────────────
+
+const FILE_ICONS = {
+  ts: "🟦", tsx: "⚛️", js: "🟨", jsx: "⚛️", json: "📋",
+  md: "📝", markdown: "📝",
+  py: "🐍", rs: "🦀", go: "🔵", java: "☕", rb: "💎",
+  html: "🌐", htm: "🌐", css: "🎨", scss: "🎨",
+  svg: "🖼️", png: "🖼️", jpg: "🖼️", jpeg: "🖼️", gif: "🖼️", webp: "🖼️", ico: "🖼️",
+  sh: "💻", bash: "💻", zsh: "💻", fish: "💻",
+  toml: "⚙️", yaml: "⚙️", yml: "⚙️", ini: "⚙️", cfg: "⚙️", env: "⚙️",
+  pdf: "📕", zip: "📦", tar: "📦", gz: "📦",
+  sql: "🗄️", db: "🗄️", sqlite: "🗄️",
+  lock: "🔒", gitignore: "🙈",
+};
+
+function getFileIcon(name, isDir) {
+  if (isDir) return "📁";
+  const ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
+  return FILE_ICONS[ext] || (name.startsWith(".") ? "⚪" : "📄");
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return "";
+  if (bytes < 1024) return bytes + "B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + "K";
+  return (bytes / (1024 * 1024)).toFixed(1) + "M";
+}
+
+function renderFileBrowser(path, entries) {
+  const fb = document.getElementById("file-browser");
+  let html = '';
+
+  // Breadcrumb/path header — clickable segments
+  const parts = path === "." ? [] : path.replace(/^\\.\\//, "").split("/");
+  html += '<div class="fb-path">';
+  html += \`<span onclick="navigateTo('')" style="color:#58a6ff;cursor:pointer">📁 .</span>\`;
+  let accum = "";
+  for (const part of parts) {
+    accum += (accum ? "/" : "") + part;
+    html += \` <span style="color:#484f58">/</span> <span onclick="navigateTo('\${accum}')" style="color:#58a6ff;cursor:pointer">\${escapeHtml(part)}</span>\`;
+  }
+  html += '</div>';
+
+  // Up directory
+  if (path && path !== ".") {
+    const parent = path.includes("/") ? path.substring(0, path.lastIndexOf("/")) : ".";
+    html += \`<div class="fb-entry dir" onclick="navigateTo('\${parent}')"><span class="fb-icon">📂</span>..</div>\`;
+  }
+
+  if (entries.length === 0) {
+    html += '<div class="fb-empty">(empty directory)</div>';
+  } else {
+    for (const entry of entries) {
+      const icon = getFileIcon(entry.name, entry.isDirectory);
+      const cls = entry.isDirectory ? "dir" : "";
+      const entryPath = (path === "." ? "" : path + "/") + entry.name;
+      const sizeStr = entry.isDirectory ? "" : \`<span class="fb-size">\${formatFileSize(entry.size)}</span>\`;
+      const onClick = entry.isDirectory
+        ? \`onclick="navigateTo('\${entryPath}')"\`
+        : \`onclick="openFile('\${entryPath}')"\`;
+      html += \`<div class="fb-entry \${cls}" \${onClick}><span class="fb-icon">\${icon}</span>\${escapeHtml(entry.name)}\${sizeStr}</div>\`;
+    }
+  }
+
+  fb.innerHTML = html;
+}
+
+function navigateTo(path) {
+  ws.send(JSON.stringify({ type: "list_dir", path: path }));
+}
+
+function openFile(path) {
+  ws.send(JSON.stringify({ type: "read_file", path: path }));
+}
+
+// ─── File Viewer ────────────────────────────────────────
+
+let viewerPath = null;
+
+function showFileViewer(path, content, isMarkdown, isBinary, language) {
+  viewerPath = path;
+  const overlay = document.getElementById("viewer-overlay");
+  const title = document.getElementById("viewer-title");
+  const contentDiv = document.getElementById("viewer-content");
+
+  // Show filename in title
+  const name = path.includes("/") ? path.substring(path.lastIndexOf("/") + 1) : path;
+  title.textContent = "📄 " + name;
+
+  if (isBinary) {
+    contentDiv.className = "";
+    contentDiv.innerHTML = '<div class="viewer-binary"><span class="icon">📦</span>Binary file — cannot preview</div>';
+  } else if (isMarkdown) {
+    contentDiv.className = "md-rendered";
+    contentDiv.innerHTML = renderFullMarkdown(content);
+  } else {
+    contentDiv.className = "";
+    const langClass = language ? \` class="language-\${language}"\` : "";
+    contentDiv.innerHTML = \`<pre><code\${langClass}>\${escapeHtml(content)}</code></pre>\`;
+  }
+
+  overlay.style.display = "";
+}
+
+document.getElementById("viewer-close").addEventListener("click", () => {
+  document.getElementById("viewer-overlay").style.display = "none";
+  viewerPath = null;
+});
+
+// Close viewer with Escape key
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.getElementById("viewer-overlay").style.display !== "none") {
+    document.getElementById("viewer-overlay").style.display = "none";
+    viewerPath = null;
+  }
+});
+
+// ─── Full Markdown Renderer ─────────────────────────────
+
+function renderFullMarkdown(text) {
+  let html = escapeHtml(text);
+
+  // Code blocks (fenced)
+  html = html.replace(/\`\`\`(\\w*)\\n?([\\s\\S]*?)\`\`\`/g, function(m, lang, code) {
+    const lc = escapeHtml(lang || "").trim();
+    const cls = lc ? \` class="language-\${lc}"\` : "";
+    return \`<pre><code\${cls}>\${escapeHtml(code)}</code></pre>\`;
+  });
+
+  // Inline code
+  html = html.replace(/\`([^\`\n]+)\`/g, '<code>$1</code>');
+
+  // Headings
+  html = html.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
+  html = html.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
+  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Horizontal rules
+  html = html.replace(/^(---|\\*\\*\\*|___)\\s*$/gm, '<hr>');
+
+  // Bold and italic
+  html = html.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
+  html = html.replace(/\\*(.+?)\\*/g, '<em>$1</em>');
+  html = html.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+  // Strikethrough
+  html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+  // Links
+  html = html.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank">$1</a>');
+
+  // Images
+  html = html.replace(/!\\[([^\\]]*)\\]\\(([^)]+)\\)/g, '<img src="$2" alt="$1">');
+
+  // Unordered lists
+  html = html.replace(/^(\\s*)[-\\*] (.+)$/gm, function(m, indent, content) {
+    return indent + '<li>' + content + '</li>';
+  });
+
+  // Ordered lists
+  html = html.replace(/^(\\s*)\\d+\\. (.+)$/gm, function(m, indent, content) {
+    return indent + '<li>' + content + '</li>';
+  });
+
+  // Blockquotes
+  html = html.replace(/^> (.+)$/gm, function(m, content) {
+    return '<blockquote><p>' + content + '</p></blockquote>';
+  });
+
+  // Tables (simple: | a | b |)
+  html = html.replace(/^\\|(.+)\\|$/gm, function(m) {
+    const cells = m.split("|").filter(c => c.trim());
+    const isHeader = m.match(/^\\|[\\s-:|]+\\|$/);
+    if (isHeader) return "";
+    const tag = "td";
+    return '<tr>' + cells.map(c => \`<\${tag}>\${c.trim()}</\${tag}>\`).join("") + '</tr>';
+  });
+
+  // Paragraphs: wrap remaining text blocks
+  // Split on double newlines and wrap in <p>
+  const blocks = html.split(/\\n\\n+/);
+  html = blocks.map(block => {
+    const trimmed = block.trim();
+    if (!trimmed) return "";
+    // Don't wrap elements that are already block-level
+    if (trimmed.match(/^<(h[1-6]|hr|pre|blockquote|table|ul|ol|li|tr|div)/)) return trimmed;
+    return '<p>' + trimmed + '</p>';
+  }).join("\\n");
+
+  // Join loose <li> elements into <ul> blocks
+  html = html.replace(/((?:<li>[\\s\\S]*?<\\/li>\\n?)+)/g, function(m) {
+    return '<ul>\\n' + m + '\\n</ul>';
+  });
+
+  return html;
+}
+
+// ─── Existing helpers ───────────────────────────────────
+
 function ensureAssistant() {
   if (!currentAssistant) {
     currentAssistant = addMessage("assistant", "");
@@ -439,7 +670,6 @@ function addMessage(role, content) {
 function appendToMsg(div, text) {
   const content = div.querySelector(".msg-content");
   content.textContent += text;
-  // Basic markdown-like code rendering
   content.innerHTML = renderMarkdown(content.textContent);
 }
 
@@ -491,9 +721,7 @@ function renderDiff(text) {
 
 function renderMarkdown(text) {
   let html = escapeHtml(text);
-  // Code blocks
   html = html.replace(/\`\`\`([\\s\\S]*?)\`\`\`/g, '<pre><code>$1</code></pre>');
-  // Inline code
   html = html.replace(/\`([^\`]+)\`/g, '<code>$1</code>');
   return html;
 }
