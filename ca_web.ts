@@ -754,9 +754,34 @@ function renderDiff(text) {
 
 function renderMarkdown(text) {
   let html = escapeHtml(text);
-  html = html.replace(/\`\`\`([\\s\\S]*?)\`\`\`/g, '<pre><code>$1</code></pre>');
+  // Code blocks with copy button
+  html = html.replace(/\`\`\`([\\s\\S]*?)\`\`\`/g, function(m, code) {
+    const escaped = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // Unique id for copy button
+    const id = "cb-" + Math.random().toString(36).substring(2, 8);
+    return \`<div class="code-block-wrap"><button class="copy-btn" onclick="copyCode('\${id}')">Copy</button><pre id="\${id}"><code>\${escaped}</code></pre></div>\`;
+  });
+  // Inline code
   html = html.replace(/\`([^\`]+)\`/g, '<code>$1</code>');
   return html;
+}
+
+function copyCode(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const text = el.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    // Find the button in the parent wrapper
+    const btn = el.parentElement.querySelector(".copy-btn");
+    if (btn) {
+      btn.textContent = "Copied!";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.textContent = "Copy";
+        btn.classList.remove("copied");
+      }, 2000);
+    }
+  }).catch(() => { /* clipboard not available */ });
 }
 
 function escapeHtml(s) {
