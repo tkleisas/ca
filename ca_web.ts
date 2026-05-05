@@ -366,6 +366,7 @@ function handleEvent(ev) {
   switch (ev.type) {
     case "banner":
       document.getElementById("sb-header").textContent = \`CA \${ev.model}\`;
+      document.getElementById("sb-version").textContent = \`v\${ev.version} · \${ev.base}\`;
       document.getElementById("status").textContent = ev.model + " · " + ev.base;
       break;
 
