@@ -730,6 +730,13 @@ async function main(): Promise<void> {
     interactiveMode = true;
   }
 
+  // Enter interactive mode if set (may have been set by web mode fallthrough)
+  if (interactiveMode) {
+    ensureApiKey(config);
+    await interactive();
+    return;
+  }
+
   // Single-shot mode
   const prompt = promptParts.join(" ").trim();
   if (!prompt) {
