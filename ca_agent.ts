@@ -253,7 +253,7 @@ export async function run(
           tool_call_id: tc.id,
           content: result,
         });
-        if (result.startsWith("Error") || result.startsWith("Error:")) {
+        if (result.startsWith("Error")) {
           hasErrors = true;
         }
       }

@@ -625,8 +625,3 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
   // Deno.serve returns after the first request, so we do a trick:
   console.error(`\n  ${colorize("🌐", "\x1b[36m")} Web UI: http://localhost:${port}\n`);
 }
-
-function colorize(text: string, color: string): string {
-  if (!Deno.stderr.isTerminal()) return text;
-  return `${color}${text}\x1b[0m`;
-}

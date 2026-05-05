@@ -264,7 +264,7 @@ export async function* chatCompletionStream(
         yield { type: "error", error: (e as Error).message };
         return;
       }
-      await retryDelay(attempt, maxRetries);
+      await waitForRetry(attempt);
     }
   }
 }

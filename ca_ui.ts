@@ -271,3 +271,13 @@ export function separator(char = "─", len = 52): string {
   const line = char.repeat(len);
   return isTerminal ? colorize(line, C.dim) : line;
 }
+
+// ─── Error Formatting Helper ────────────────────────────
+
+export function formatError(msg: string): string {
+  return `${colorize("✘", C.red)} ${bold("Error:")} ${msg}`;
+}
+
+export function formatWarning(msg: string): string {
+  return `${colorize("⚠", C.yellow)} ${bold("Warning:")} ${msg}`;
+}

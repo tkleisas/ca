@@ -460,7 +460,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
             console.error(dim("  Keys: maxRounds, maxRetries, maxTokens, temperature,"));
             console.error(dim("        topP, stream (on/off), thinking (on/off),"));
             console.error(dim("        approve (on/off), dryRun (on/off), sandbox (on/off),"));
-            console.error(dim("        autoCommit (on/off)"));
+            console.error(dim("        autoCommit (on/off), userId, stop, responseFormat"));
             continue;
           }
 
@@ -491,6 +491,15 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
                 console.error(colorize(`${k} = ${on ? "on" : "off"}`, C.green));
                 return true;
               }
+              case "apiKey": case "userId": case "stop":
+              case "responseFormat": {
+                const ov: Partial<AgentConfig> = {};
+                (ov as unknown as Record<string, unknown>)[k] = v;
+                applyCliOverrides(ov);
+                const display = k === "apiKey" ? (v.length > 8 ? v.substring(0, 8) + "..." : v) : v;
+                console.error(colorize(`${k} = ${display}`, C.green));
+                return true;
+              }
               default: return false;
             }
           }
@@ -500,7 +509,8 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
             console.error(`${colorize("✘", C.red)} Unknown key: ${key}`);
             console.error(dim("  Valid keys: maxRounds, maxRetries, maxTokens, temperature,"));
             console.error(dim("             topP, stream, thinking, approve, dryRun,"));
-            console.error(dim("             sandbox, autoCommit"));
+            console.error(dim("             sandbox, autoCommit, userId, stop,"));
+            console.error(dim("             responseFormat, apiKey"));
           }
           continue;
         }

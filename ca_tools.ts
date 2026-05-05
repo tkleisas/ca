@@ -405,7 +405,12 @@ async function execListDirectory(path: string | undefined, depth: number, opts: 
 async function listDirRecursive(dirPath: string, maxDepth: number, currentDepth: number, lines: string[], cwd: string): Promise<void> {
   if (currentDepth >= maxDepth) return;
   const entries: Deno.DirEntry[] = [];
-  for await (const entry of Deno.readDir(dirPath)) entries.push(entry);
+  try {
+    for await (const entry of Deno.readDir(dirPath)) entries.push(entry);
+  } catch {
+    lines.push(`${"  ".repeat(currentDepth)}  ⚠ permission denied`);
+    return;
+  }
   entries.sort((a, b) => a.isDirectory !== b.isDirectory ? (a.isDirectory ? -1 : 1) : a.name.localeCompare(b.name));
 
   const indent = "  ".repeat(currentDepth);
