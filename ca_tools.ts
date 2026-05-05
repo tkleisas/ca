@@ -411,7 +411,7 @@ async function listDirRecursive(dirPath: string, maxDepth: number, currentDepth:
   for (const entry of entries) {
     if (entry.name.startsWith(".") && entry.name !== ".ca.json") continue;
     const icon = entry.isDirectory ? "📁" : "📄";
-    const sizeStr = entry.isFile ? formatSize(`${dirPath}/${entry.name}`) : "";
+    const sizeStr = entry.isFile ? await formatSize(`${dirPath}/${entry.name}`) : "";
     lines.push(`${indent}  ${icon} ${entry.name}${sizeStr ? " " + dim(sizeStr) : ""}`);
     if (entry.isDirectory && currentDepth + 1 < maxDepth) {
       await listDirRecursive(`${dirPath}/${entry.name}`, maxDepth, currentDepth + 1, lines, cwd);
