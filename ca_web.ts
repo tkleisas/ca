@@ -69,6 +69,12 @@ export async function runWebAgent(
     }
 
     const estTokens = estimateMessagesTokens(msgs);
+    onEvent({
+      type: "token_update",
+      used: estTokens,
+      max: config.maxTokens,
+      pct: ((estTokens / config.maxTokens) * 100).toFixed(1),
+    });
     if (estTokens > config.maxTokens * 0.85) {
       onEvent({
         type: "token_warning",
