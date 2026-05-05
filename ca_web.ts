@@ -84,7 +84,9 @@ export async function runWebAgent(
       };
 
       for await (const event of chatCompletionStream(msgs, tools, config)) {
-        if (event.type === "content") {
+        if (event.type === "reasoning") {
+          accum.reasoning += event.content!;
+        } else if (event.type === "content") {
           accum.content += event.content!;
           onEvent({ type: "assistant_text", content: event.content! });
         } else if (event.type === "tool_call_start") {
