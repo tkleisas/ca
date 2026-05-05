@@ -693,6 +693,14 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Web UI mode
+  if (webMode) {
+    ensureApiKey(config);
+    console.error(`${colorize("🌐", C.cyan)} ${bold("Starting CA Web UI...")}`);
+    await startWebServer(config, webPort);
+    return;
+  }
+
   // Single-shot mode
   const prompt = promptParts.join(" ").trim();
   if (!prompt) {
