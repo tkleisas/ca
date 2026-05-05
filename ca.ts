@@ -31,6 +31,17 @@ function setupSignalHandlers(): void {
 
 // ─── Restart Helper ────────────────────────────────────
 
+function ensureApiKey(config: AgentConfig): void {
+  const isLocal = config.apiBase.includes("localhost") ||
+    config.apiBase.includes("127.0.0.1");
+  if (!config.apiKey && !isLocal) {
+    console.error(
+      `${colorize("✘", C.red)} ${bold("Error:")} CA_API_KEY not set. Use --api-key, CA_API_KEY env, or a local API base.`,
+    );
+    Deno.exit(1);
+  }
+}
+
 async function performRestart(resumeFile: string): Promise<void> {
   console.error(dim("  Spawning new CA process..."));
   const child = new Deno.Command("deno", {
