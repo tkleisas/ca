@@ -605,6 +605,45 @@ function openFile(path) {
   ws.send(JSON.stringify({ type: "read_file", path: path }));
 }
 
+// ─── Session Management ──────────────────────────────────
+
+document.getElementById("new-session-btn").addEventListener("click", () => {
+  ws.send(JSON.stringify({ type: "session_new" }));
+});
+
+function renderSessionList(sessions, currentId) {
+  const container = document.getElementById("sessions-list");
+  if (!sessions || sessions.length === 0) {
+    container.innerHTML = '<div class="fb-empty">No saved sessions</div>';
+    return;
+  }
+  let html = "";
+  for (const s of sessions) {
+    const active = s.id === currentId ? " active" : "";
+    const date = new Date(s.updatedAt);
+    const dateStr = date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    html += \`<div class="session-entry\${active}" onclick="switchSession('\${s.id}')">\`;
+    html += \`<span class="ses-title">\${escapeHtml(s.title)}</span>\`;
+    html += \`<span class="ses-meta">\${s.messageCount} msg · \${dateStr}</span>\`;
+    html += \`<span class="ses-del" onclick="deleteSession(event, '\${s.id}')">✕</span>\`;
+    html += \`</div>\`;
+  }
+  container.innerHTML = html;
+}
+
+function switchSession(id) {
+  ws.send(JSON.stringify({ type: "session_switch", id }));
+  // Switch to context tab to see messages
+  switchTab("context");
+}
+
+function deleteSession(event, id) {
+  event.stopPropagation();
+  if (confirm("Delete this session?")) {
+    ws.send(JSON.stringify({ type: "session_delete", id }));
+  }
+}
+
 // ─── File Viewer ────────────────────────────────────────
 
 let viewerPath = null;
