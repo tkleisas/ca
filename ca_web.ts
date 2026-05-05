@@ -381,6 +381,11 @@ function handleEvent(ev) {
       addWarning(\`Token budget: ~\${ev.used} / \${ev.max} (\${ev.pct}%)\`);
       break;
 
+    case "token_update":
+      document.getElementById("sb-stats").innerHTML =
+        \`Tokens: <span style="color:#58a6ff">~\${ev.used.toLocaleString()}</span> / \${ev.max.toLocaleString()} <span style="color:#484f58">(\${ev.pct}%)</span>\`;
+      break;
+
     case "assistant_text":
       if (!currentAssistant) {
         removeThinking();
