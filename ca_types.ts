@@ -1,6 +1,6 @@
 // ─── Version ──────────────────────────────────────────
 
-export const VERSION = "0.2.1";
+export const VERSION = "0.2.2";
 
 // ─── Core Message Types ──────────────────────────────
 

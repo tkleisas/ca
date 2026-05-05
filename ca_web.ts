@@ -589,11 +589,12 @@ document.addEventListener("keydown", (e) => {
 function renderFullMarkdown(text) {
   let html = escapeHtml(text);
 
-  // Code blocks (fenced)
+  // Code blocks (fenced) — with copy button
   html = html.replace(/\`\`\`(\\w*)\\n?([\\s\\S]*?)\`\`\`/g, function(m, lang, code) {
     const lc = escapeHtml(lang || "").trim();
     const cls = lc ? \` class="language-\${lc}"\` : "";
-    return \`<pre><code\${cls}>\${escapeHtml(code)}</code></pre>\`;
+    const id = "cbv-" + Math.random().toString(36).substring(2, 8);
+    return \`<div class="code-block-wrap"><button class="copy-btn" onclick="copyCode('\${id}')">Copy</button><pre id="\${id}"><code\${cls}>\${escapeHtml(code)}</code></pre></div>\`;
   });
 
   // Inline code

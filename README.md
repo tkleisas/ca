@@ -3,7 +3,7 @@
 A CLI coding agent powered by LLMs that reads, writes, searches, and executes code — including modifying its own source. Built in TypeScript for [Deno](https://deno.com).
 
 ```
-CA 0.2.1 — Self-Evolving Coding Agent
+CA 0.2.2 — Self-Evolving Coding Agent
 ────────────────────────────────────────────────────
 Model: deepseek-v4-pro  Base: https://api.deepseek.com/v1
 Flags: sandbox

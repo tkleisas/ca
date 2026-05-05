@@ -460,7 +460,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
             console.error(dim("  Keys: maxRounds, maxRetries, maxTokens, temperature,"));
             console.error(dim("        topP, stream (on/off), thinking (on/off),"));
             console.error(dim("        approve (on/off), dryRun (on/off), sandbox (on/off),"));
-            console.error(dim("        autoCommit (on/off), userId, stop, responseFormat"));
+            console.error(dim("        autoCommit (on/off), model, userId, stop, responseFormat"));
             continue;
           }
 
@@ -492,7 +492,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
                 return true;
               }
               case "apiKey": case "userId": case "stop":
-              case "responseFormat": {
+              case "responseFormat": case "model": {
                 const ov: Partial<AgentConfig> = {};
                 (ov as unknown as Record<string, unknown>)[k] = v;
                 applyCliOverrides(ov);
@@ -504,13 +504,22 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
             }
           }
 
+          const configAffectingKeys = new Set(["sandbox", "approve", "dryRun", "thinking", "systemPrompt"]);
+          const wasConfigAffecting = configAffectingKeys.has(key);
+
           const success = setConfigValue(key, val);
           if (!success) {
             console.error(`${colorize("✘", C.red)} Unknown key: ${key}`);
             console.error(dim("  Valid keys: maxRounds, maxRetries, maxTokens, temperature,"));
             console.error(dim("             topP, stream, thinking, approve, dryRun,"));
-            console.error(dim("             sandbox, autoCommit, userId, stop,"));
+            console.error(dim("             sandbox, autoCommit, model, userId, stop,"));
             console.error(dim("             responseFormat, apiKey"));
+          } else if (wasConfigAffecting && messages.length > 0 && messages[0].role === "system") {
+            // Refresh system prompt to reflect config changes
+            const updatedConfig = getConfig();
+            const newSystemContent = await buildSystemContent(updatedConfig, Deno.cwd());
+            messages[0].content = newSystemContent;
+            console.error(dim("  (system prompt updated to reflect config changes)"));
           }
           continue;
         }
