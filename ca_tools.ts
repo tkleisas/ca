@@ -493,7 +493,12 @@ async function execApplyDiff(path: string, search: string, replace: string, opts
     const diff = await computeDiff(path, original, updated, opts.cwd);
     if (diff) console.error(diff);
 
-    return { output: `Successfully applied diff to ${path}: replaced ${search.length} bytes with ${replace.length} bytes`, error: false, diff: diff || undefined };
+    // Run TypeScript check for .ts files
+    const tsCheck = await checkTypeScript(path, opts.cwd);
+    if (tsCheck) console.error(tsCheck);
+
+    const checkInfo = tsCheck ? `\n${tsCheck}` : "";
+    return { output: `Successfully applied diff to ${path}: replaced ${search.length} bytes with ${replace.length} bytes${checkInfo}`, error: false, diff: diff || undefined };
   } catch (e) {
     return { output: `Error applying diff: ${(e as Error).message}`, error: true };
   }
