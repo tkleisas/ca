@@ -1490,6 +1490,9 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
                   await initSession();
                 }, 500);
               }
+            } else if (data.type === "session_list") {
+              const sessions = await listSessions(Deno.cwd());
+              socket.send(JSON.stringify({ type: "session_list", sessions, currentId: currentSessionId ?? "" }));
             } else if (data.type === "session_new") {
               // Save current session first
               await autoSave();
