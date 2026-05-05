@@ -802,6 +802,184 @@ function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// ─── Syntax Highlighting ─────────────────────────────────
+
+const TS_KEYWORDS = new Set([
+  "const", "let", "var", "function", "class", "interface", "type", "enum",
+  "export", "import", "from", "default", "as", "extends", "implements",
+  "return", "if", "else", "for", "while", "do", "switch", "case", "break",
+  "continue", "try", "catch", "finally", "throw", "new", "this", "super",
+  "async", "await", "yield", "of", "in", "typeof", "instanceof", "void",
+  "null", "undefined", "true", "false", "public", "private", "protected",
+  "readonly", "static", "abstract", "declare", "namespace", "module",
+  "keyof", "infer", "never", "unknown", "any", "boolean", "number", "string",
+  "symbol", "bigint", "object", "satisfies",
+]);
+
+const TS_BUILTINS = new Set([
+  "console", "Math", "Date", "RegExp", "Map", "Set", "WeakMap", "WeakSet",
+  "Promise", "Array", "Object", "Error", "JSON", "parseInt", "parseFloat",
+  "String", "Number", "Boolean", "Deno", "fetch",
+]);
+
+// Keywords for other common languages
+const LANG_KEYWORDS = {
+  python: new Set(["def", "class", "import", "from", "if", "elif", "else", "for", "while", "return", "yield", "async", "await", "try", "except", "finally", "raise", "with", "as", "pass", "break", "continue", "and", "or", "not", "in", "is", "True", "False", "None", "lambda", "global", "nonlocal", "self"]),
+  rust: new Set(["fn", "let", "mut", "const", "struct", "enum", "impl", "trait", "pub", "use", "mod", "where", "for", "while", "loop", "if", "else", "match", "return", "async", "await", "move", "ref", "self", "Self", "true", "false", "unsafe", "extern", "crate", "super", "type", "dyn", "as", "in", "static"]),
+  go: new Set(["func", "var", "const", "type", "struct", "interface", "package", "import", "return", "if", "else", "for", "range", "switch", "case", "defer", "go", "chan", "select", "map", "nil", "true", "false", "break", "continue", "fallthrough"]),
+};
+
+const LANG_STRINGS = ["typescript", "tsx", "javascript", "jsx", "python", "rust", "go", "java", "c", "cpp", "csharp", "ruby", "php", "swift", "kotlin", "scala", "sql", "bash", "sh", "json", "yaml", "toml", "css", "html", "xml"];
+
+function highlightCode(code, language) {
+  if (!code) return "";
+  const lang = (language || "").toLowerCase();
+
+  // Only highlight supported languages
+  if (!LANG_STRINGS.includes(lang) && lang !== "dockerfile" && lang !== "makefile") {
+    return escapeHtml(code);
+  }
+
+  // Group: ts/js family
+  const isTS = lang === "typescript" || lang === "tsx" || lang === "javascript" || lang === "jsx";
+
+  // For non-TS languages, just return escaped with basic coloring
+  if (!isTS) {
+    // Basic: highlight comments and strings for all languages
+    let html = escapeHtml(code);
+    // Strings
+    html = html.replace(/(["'\\\`])(?:(?!\\1|\\\\|\\\\n|\\\\r|\\\\t)[^\\1])*\\1/g, '<span style="color:#a5d6ff">$&</span>');
+    // Comments: // and #
+    html = html.replace(/(\/\/.*$|#.*$)/gm, '<span style="color:#8b949e;font-style:italic">$&</span>');
+    return html;
+  }
+
+  // ─── TypeScript/JavaScript full highlighter ──────────
+
+  // Tokenize
+  const tokens = [];
+  let i = 0;
+
+  while (i < code.length) {
+    // Line comment //
+    if (code[i] === "/" && code[i + 1] === "/") {
+      let end = i;
+      while (end < code.length && code[end] !== "\n") end++;
+      tokens.push({ kind: "comment", text: code.substring(i, end) });
+      i = end;
+      continue;
+    }
+    // Block comment /* */
+    if (code[i] === "/" && code[i + 1] === "*") {
+      let end = i + 2;
+      while (end < code.length && !(code[end - 1] === "*" && code[end] === "/")) end++;
+      if (end < code.length) end++; // include closing */
+      tokens.push({ kind: "comment", text: code.substring(i, end) });
+      i = end;
+      continue;
+    }
+    // Template literal \`...\`
+    if (code[i] === "\`") {
+      let end = i + 1;
+      while (end < code.length && code[end] !== "\`") {
+        if (code[end] === "\\") end++; // skip escaped
+        end++;
+      }
+      if (end < code.length) end++; // include closing \`
+      tokens.push({ kind: "string", text: code.substring(i, end) });
+      i = end;
+      continue;
+    }
+    // Double-quoted string
+    if (code[i] === '"') {
+      let end = i + 1;
+      while (end < code.length && code[end] !== '"') {
+        if (code[end] === "\\") end++;
+        end++;
+      }
+      if (end < code.length) end++;
+      tokens.push({ kind: "string", text: code.substring(i, end) });
+      i = end;
+      continue;
+    }
+    // Single-quoted string
+    if (code[i] === "'") {
+      let end = i + 1;
+      while (end < code.length && code[end] !== "'") {
+        if (code[end] === "\\") end++;
+        end++;
+      }
+      if (end < code.length) end++;
+      tokens.push({ kind: "string", text: code.substring(i, end) });
+      i = end;
+      continue;
+    }
+    // Regex literal /.../
+    if (code[i] === "/" && i > 0 && /[=\(\[\{!\?:,&\|]/.test(code[i - 1])) {
+      let end = i + 1;
+      while (end < code.length && code[end] !== "/") {
+        if (code[end] === "\\") end++;
+        end++;
+      }
+      if (end < code.length) end++; // include closing /
+      // Read flags
+      while (end < code.length && /[gimsuy]/.test(code[end])) end++;
+      tokens.push({ kind: "regex", text: code.substring(i, end) });
+      i = end;
+      continue;
+    }
+    // Numbers
+    if (/[0-9]/.test(code[i])) {
+      let end = i;
+      if (code[i] === "0" && (code[i + 1] === "x" || code[i + 1] === "X" || code[i + 1] === "b" || code[i + 1] === "B" || code[i + 1] === "o" || code[i + 1] === "O")) end += 2;
+      while (end < code.length && /[0-9a-fA-F\._\-\+]/.test(code[end])) end++;
+      tokens.push({ kind: "number", text: code.substring(i, end) });
+      i = end;
+      continue;
+    }
+    // Identifier or keyword
+    if (/[a-zA-Z_$]/.test(code[i])) {
+      let end = i;
+      while (end < code.length && /[a-zA-Z0-9_$]/.test(code[end])) end++;
+      const word = code.substring(i, end);
+      if (TS_KEYWORDS.has(word)) {
+        tokens.push({ kind: "keyword", text: word });
+      } else if (TS_BUILTINS.has(word)) {
+        tokens.push({ kind: "builtin", text: word });
+      } else if (word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase()) {
+        tokens.push({ kind: "type", text: word }); // PascalCase = likely type
+      } else {
+        tokens.push({ kind: "ident", text: word });
+      }
+      i = end;
+      continue;
+    }
+    // Punctuation / operators
+    tokens.push({ kind: "punct", text: code[i] });
+    i++;
+  }
+
+  // Render tokens
+  const colors = {
+    keyword: "color:#ff7b72",
+    builtin: "color:#d2a8ff",
+    type: "color:#ffa657",
+    string: "color:#a5d6ff",
+    number: "color:#79c0ff",
+    comment: "color:#8b949e;font-style:italic",
+    regex: "color:#a5d6ff",
+    ident: "color:#c9d1d9",
+    punct: "color:#c9d1d9",
+  };
+
+  let html = "";
+  for (const tok of tokens) {
+    const color = colors[tok.kind] || "";
+    html += \`<span style="\${color}">\${escapeHtml(tok.text)}</span>\`;
+  }
+  return html;
+}
+
 function addThinking(round, max) {
   removeThinking();
   const div = document.createElement("div");
