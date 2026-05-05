@@ -1004,108 +1004,111 @@ export async function startWebServer(config: AgentConfig, port: number): Promise
 
   await initSession();
 
-  Deno.serve({ port, hostname: "127.0.0.1" }, (req) => {
-    const url = new URL(req.url);
+  console.error(`\n  ${colorize("🌐", "\x1b[36m")} Web UI: http://localhost:${port}\n`);
 
-    // WebSocket upgrade
-    if (url.pathname === "/ws") {
-      const { socket, response } = Deno.upgradeWebSocket(req);
+  try {
+    Deno.serve({ port, hostname: "127.0.0.1" }, (req) => {
+      const url = new URL(req.url);
 
-      socket.onopen = () => {
-        // Send banner and context
-        socket.send(JSON.stringify({
-          type: "banner",
-          model: config.model,
-          base: config.apiBase,
-          flags,
-        }));
-        socket.send(JSON.stringify({
-          type: "context",
-          content: contextStr || `Working directory: ${Deno.cwd()}`,
-        }));
-      };
+      // WebSocket upgrade
+      if (url.pathname === "/ws") {
+        const { socket, response } = Deno.upgradeWebSocket(req);
 
-      socket.onmessage = async (event) => {
-        try {
-          const data = JSON.parse(event.data as string);
-          if (data.type === "user_message") {
-            const prompt = data.content as string;
-            if (!prompt?.trim()) return;
+        socket.onopen = () => {
+          // Send banner and context
+          socket.send(JSON.stringify({
+            type: "banner",
+            model: config.model,
+            base: config.apiBase,
+            flags,
+          }));
+          socket.send(JSON.stringify({
+            type: "context",
+            content: contextStr || `Working directory: ${Deno.cwd()}`,
+          }));
+        };
 
-            const result = await runWebAgent(prompt, messages, {
-              config,
-              onEvent: (ev) => {
-                socket.send(JSON.stringify(ev));
-              },
-            });
-            messages = result.messages;
+        socket.onmessage = async (event) => {
+          try {
+            const data = JSON.parse(event.data as string);
+            if (data.type === "user_message") {
+              const prompt = data.content as string;
+              if (!prompt?.trim()) return;
 
-            if (result.needsRestart) {
-              // Wait a moment then restart
-              setTimeout(async () => {
-                // Re-init for new process
-                await initSession();
-              }, 500);
+              const result = await runWebAgent(prompt, messages, {
+                config,
+                onEvent: (ev) => {
+                  socket.send(JSON.stringify(ev));
+                },
+              });
+              messages = result.messages;
+
+              if (result.needsRestart) {
+                // Wait a moment then restart
+                setTimeout(async () => {
+                  // Re-init for new process
+                  await initSession();
+                }, 500);
+              }
+            } else if (data.type === "list_dir") {
+              const reqPath = (data.path as string) || Deno.cwd();
+              const safety = isPathSafe(reqPath, Deno.cwd(), config.sandbox);
+              if (!safety.safe) {
+                socket.send(JSON.stringify({ type: "error", message: `Path blocked: ${safety.reason}` }));
+                return;
+              }
+              const entries = await listDirEntries(reqPath);
+              // Resolve to a relative display path
+              const cwd = Deno.cwd();
+              const displayPath = reqPath === cwd ? "." : (reqPath.startsWith(cwd + "/") ? "./" + reqPath.substring(cwd.length + 1) : reqPath);
+              socket.send(JSON.stringify({ type: "dir_listing", path: displayPath, entries }));
+            } else if (data.type === "read_file") {
+              const reqPath = data.path as string;
+              if (!reqPath) {
+                socket.send(JSON.stringify({ type: "error", message: "No path provided" }));
+                return;
+              }
+              const safety = isPathSafe(reqPath, Deno.cwd(), config.sandbox);
+              if (!safety.safe) {
+                socket.send(JSON.stringify({ type: "error", message: `Path blocked: ${safety.reason}` }));
+                return;
+              }
+              const fileInfo = await readFileForWeb(reqPath);
+              socket.send(JSON.stringify({
+                type: "file_content",
+                path: reqPath,
+                content: fileInfo.content,
+                isMarkdown: fileInfo.isMarkdown,
+                isBinary: fileInfo.isBinary,
+                language: fileInfo.language,
+              }));
             }
-          } else if (data.type === "list_dir") {
-            const reqPath = (data.path as string) || Deno.cwd();
-            const safety = isPathSafe(reqPath, Deno.cwd(), config.sandbox);
-            if (!safety.safe) {
-              socket.send(JSON.stringify({ type: "error", message: `Path blocked: ${safety.reason}` }));
-              return;
-            }
-            const entries = await listDirEntries(reqPath);
-            // Resolve to a relative display path
-            const cwd = Deno.cwd();
-            const displayPath = reqPath === cwd ? "." : (reqPath.startsWith(cwd + "/") ? "./" + reqPath.substring(cwd.length + 1) : reqPath);
-            socket.send(JSON.stringify({ type: "dir_listing", path: displayPath, entries }));
-          } else if (data.type === "read_file") {
-            const reqPath = data.path as string;
-            if (!reqPath) {
-              socket.send(JSON.stringify({ type: "error", message: "No path provided" }));
-              return;
-            }
-            const safety = isPathSafe(reqPath, Deno.cwd(), config.sandbox);
-            if (!safety.safe) {
-              socket.send(JSON.stringify({ type: "error", message: `Path blocked: ${safety.reason}` }));
-              return;
-            }
-            const fileInfo = await readFileForWeb(reqPath);
+          } catch (e) {
             socket.send(JSON.stringify({
-              type: "file_content",
-              path: reqPath,
-              content: fileInfo.content,
-              isMarkdown: fileInfo.isMarkdown,
-              isBinary: fileInfo.isBinary,
-              language: fileInfo.language,
+              type: "error",
+              message: `Internal error: ${(e as Error).message}`,
             }));
           }
-        } catch (e) {
-          socket.send(JSON.stringify({
-            type: "error",
-            message: `Internal error: ${(e as Error).message}`,
-          }));
-        }
-      };
+        };
 
-      socket.onclose = () => {
-        // Session cleanup — keep messages for potential reconnect
-      };
+        socket.onclose = () => {
+          // Session cleanup — keep messages for potential reconnect
+        };
 
-      socket.onerror = (e) => {
-        console.error("WebSocket error:", e);
-      };
+        socket.onerror = (e) => {
+          console.error("WebSocket error:", e);
+        };
 
-      return response;
-    }
+        return response;
+      }
 
-    // Serve the HTML page
-    return new Response(HTML, {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      // Serve the HTML page
+      return new Response(HTML, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
     });
-  });
-
-  // The Deno.serve call above blocks, but we need to log the URL first
-  // Deno.serve returns after the first request, so we do a trick:
-  console.error(`\n  ${colorize("🌐", "\x1b[36m")} Web UI: http://localhost:${port}\n`);
+  } catch (e) {
+    console.error(`${colorize("✘", "\x1b[31m")} Web server failed: ${(e as Error).message}`);
+    console.error(`  Falling back to interactive mode.`);
+  }
 }
