@@ -1401,88 +1401,76 @@ export interface WebServerHandle {
 }
 
 export function startWebServer(config: AgentConfig, port: number): WebServerHandle {
-  // Build context for the sidebar
-  let contextStr = "";
-  try {
-    const { getProjectContext } = await import("./ca_agent.ts");
-    contextStr = await getProjectContext(Deno.cwd());
-  } catch { /* ok */ }
+  const abortController = new AbortController();
 
-  const flags: string[] = [];
-  if (config.thinking) flags.push("thinking");
-  if (config.sandbox) flags.push("sandbox");
-  if (config.approve) flags.push("approve");
-  if (config.dryRun) flags.push("dry-run");
-  if (config.stream) flags.push("stream");
+  const done = (async () => {
+    // Build context for the sidebar
+    let contextStr = "";
+    try {
+      const { getProjectContext } = await import("./ca_agent.ts");
+      contextStr = await getProjectContext(Deno.cwd());
+    } catch { /* ok */ }
 
-  // Global state per session
-  let messages: ChatMessage[] = [];
-  let systemContent = "";
-  let currentSessionId: string | null = null;
+    const flags: string[] = [];
+    if (config.thinking) flags.push("thinking");
+    if (config.sandbox) flags.push("sandbox");
+    if (config.approve) flags.push("approve");
+    if (config.dryRun) flags.push("dry-run");
+    if (config.stream) flags.push("stream");
 
-  async function initSession(sessionId?: string): Promise<void> {
-    systemContent = await buildSystemContent(config, Deno.cwd());
-    const cwd = Deno.cwd();
-    if (sessionId) {
-      // Load existing session
-      try {
-        const loaded = await loadSession(cwd, sessionId);
-        if (loaded.length > 0 && loaded[0].role === "system") {
-          loaded[0].content = systemContent; // refresh system prompt
+    // Global state per session
+    let messages: ChatMessage[] = [];
+    let systemContent = "";
+    let currentSessionId: string | null = null;
+
+    async function initSession(sessionId?: string): Promise<void> {
+      systemContent = await buildSystemContent(config, Deno.cwd());
+      const cwd = Deno.cwd();
+      if (sessionId) {
+        try {
+          const loaded = await loadSession(cwd, sessionId);
+          if (loaded.length > 0 && loaded[0].role === "system") {
+            loaded[0].content = systemContent;
+          }
+          messages = loaded;
+          currentSessionId = sessionId;
+          return;
+        } catch {
+          // Session not found, create new below
         }
-        messages = loaded;
-        currentSessionId = sessionId;
-        console.error(`  ${colorize("📂", C.cyan)} Session ${dim(sessionId)} loaded (${loaded.length} messages)`);
-        return;
-      } catch {
-        console.error(`  ${colorize("⚠", C.yellow)} Session ${dim(sessionId)} not found, creating new`);
+      }
+      const id = await createSession(cwd, config.model);
+      currentSessionId = id;
+      messages = [{ role: "system", content: systemContent }];
+    }
+
+    async function autoSave(): Promise<void> {
+      if (currentSessionId && messages.length > 1) {
+        try {
+          await saveSession(Deno.cwd(), currentSessionId, messages, config.model);
+        } catch { /* non-critical */ }
       }
     }
-    // Create new session
-    const id = await createSession(cwd, config.model);
-    currentSessionId = id;
-    messages = [{ role: "system", content: systemContent }];
-  }
 
-  async function autoSave(): Promise<void> {
-    if (currentSessionId && messages.length > 1) {
-      try {
-        await saveSession(Deno.cwd(), currentSessionId, messages, config.model);
-      } catch { /* non-critical */ }
-    }
-  }
+    await initSession();
+    console.error(`\n  ${colorize("🌐", "\x1b[36m")} Web UI: http://localhost:${port}\n`);
 
-  await initSession();
-
-  console.error(`\n  ${colorize("🌐", "\x1b[36m")} Web UI: http://localhost:${port}\n`);
-
-  try {
-    Deno.serve({ port, hostname: "127.0.0.1" }, (req) => {
+    const server = Deno.serve({ port, hostname: "127.0.0.1", signal: abortController.signal }, (req) => {
       const url = new URL(req.url);
 
-      // WebSocket upgrade
       if (url.pathname === "/ws") {
         const { socket, response } = Deno.upgradeWebSocket(req);
 
         socket.onopen = async () => {
-          // Send banner and context
           socket.send(JSON.stringify({
-            type: "banner",
-            model: config.model,
-            base: config.apiBase,
-            flags,
-            version: VERSION,
+            type: "banner", model: config.model, base: config.apiBase, flags, version: VERSION,
           }));
           socket.send(JSON.stringify({
-            type: "context",
-            content: contextStr || `Working directory: ${Deno.cwd()}`,
+            type: "context", content: contextStr || `Working directory: ${Deno.cwd()}`,
           }));
-          // Send session list
           const sessions = await listSessions(Deno.cwd());
           socket.send(JSON.stringify({
-            type: "session_list",
-            sessions,
-            currentId: currentSessionId ?? "",
+            type: "session_list", sessions, currentId: currentSessionId ?? "",
           }));
         };
 
@@ -1492,31 +1480,17 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
             if (data.type === "user_message") {
               const prompt = data.content as string;
               if (!prompt?.trim()) return;
-
               const result = await runWebAgent(prompt, messages, {
                 config,
-                onEvent: (ev) => {
-                  socket.send(JSON.stringify(ev));
-                },
+                onEvent: (ev) => { socket.send(JSON.stringify(ev)); },
               });
               messages = result.messages;
-              // Auto-save after each exchange
               await autoSave();
-
-              if (result.needsRestart) {
-                // Wait a moment then restart
-                setTimeout(async () => {
-                  // Re-init for new process
-                  await initSession();
-                }, 500);
-              }
             } else if (data.type === "session_list") {
               const sessions = await listSessions(Deno.cwd());
               socket.send(JSON.stringify({ type: "session_list", sessions, currentId: currentSessionId ?? "" }));
             } else if (data.type === "session_new") {
-              // Save current session first
               await autoSave();
-              // Create new session
               const id = await createSession(Deno.cwd(), config.model);
               currentSessionId = id;
               systemContent = await buildSystemContent(config, Deno.cwd());
@@ -1536,14 +1510,11 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
                 messages = loaded;
                 currentSessionId = targetId;
                 socket.send(JSON.stringify({
-                  type: "session_switched",
-                  id: targetId,
+                  type: "session_switched", id: targetId,
                   messages: loaded.filter(m => m.role !== "system").map(m => ({
-                    role: m.role,
-                    content: m.content?.substring(0, 200) ?? null,
+                    role: m.role, content: m.content?.substring(0, 200) ?? null,
                   })),
                 }));
-                // Clear UI and show conversation summary
               } catch (e) {
                 socket.send(JSON.stringify({ type: "error", message: `Failed to load session: ${(e as Error).message}` }));
               }
@@ -1552,7 +1523,6 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
               if (!targetId) return;
               await deleteSession(Deno.cwd(), targetId);
               if (targetId === currentSessionId) {
-                // Create a new session if current was deleted
                 const id = await createSession(Deno.cwd(), config.model);
                 currentSessionId = id;
                 systemContent = await buildSystemContent(config, Deno.cwd());
@@ -1568,35 +1538,23 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
                 return;
               }
               const entries = await listDirEntries(reqPath);
-              // Resolve to a relative display path
               const cwd = Deno.cwd();
               const displayPath = reqPath === cwd ? "." : (reqPath.startsWith(cwd + "/") ? "./" + reqPath.substring(cwd.length + 1) : reqPath);
               socket.send(JSON.stringify({ type: "dir_listing", path: displayPath, entries }));
             } else if (data.type === "read_file") {
               const reqPath = data.path as string;
-              if (!reqPath) {
-                socket.send(JSON.stringify({ type: "error", message: "No path provided" }));
-                return;
-              }
+              if (!reqPath) { socket.send(JSON.stringify({ type: "error", message: "No path provided" })); return; }
               const safety = isPathSafe(reqPath, Deno.cwd(), config.sandbox);
-              if (!safety.safe) {
-                socket.send(JSON.stringify({ type: "error", message: `Path blocked: ${safety.reason}` }));
-                return;
-              }
+              if (!safety.safe) { socket.send(JSON.stringify({ type: "error", message: `Path blocked: ${safety.reason}` })); return; }
               const fileInfo = await readFileForWeb(reqPath);
-              // Run deno check for TS files
               let diagnostics: Diagnostic[] | undefined;
               if (/\.(ts|tsx)$/.test(reqPath)) {
                 diagnostics = await runTsDiagnostics(reqPath, Deno.cwd());
               }
               socket.send(JSON.stringify({
-                type: "file_content",
-                path: reqPath,
-                content: fileInfo.content,
-                isMarkdown: fileInfo.isMarkdown,
-                isBinary: fileInfo.isBinary,
-                language: fileInfo.language,
-                diagnostics,
+                type: "file_content", path: reqPath, content: fileInfo.content,
+                isMarkdown: fileInfo.isMarkdown, isBinary: fileInfo.isBinary,
+                language: fileInfo.language, diagnostics,
               }));
             } else if (data.type === "check_file") {
               const reqPath = data.path as string;
@@ -1607,31 +1565,26 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
               socket.send(JSON.stringify({ type: "diagnostics", path: reqPath, diagnostics: diags }));
             }
           } catch (e) {
-            socket.send(JSON.stringify({
-              type: "error",
-              message: `Internal error: ${(e as Error).message}`,
-            }));
+            socket.send(JSON.stringify({ type: "error", message: `Internal error: ${(e as Error).message}` }));
           }
         };
 
-        socket.onclose = () => {
-          // Session cleanup — keep messages for potential reconnect
-        };
-
-        socket.onerror = (e) => {
-          console.error("WebSocket error:", e);
-        };
-
+        socket.onclose = () => {};
+        socket.onerror = (e) => { console.error("WebSocket error:", e); };
         return response;
       }
 
-      // Serve the HTML page
       return new Response(HTML, {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     });
-  } catch (e) {
-    console.error(`${colorize("✘", "\x1b[31m")} Web server failed: ${(e as Error).message}`);
-    console.error(`  Falling back to interactive mode.`);
-  }
+
+    // Block until the server shuts down (via abort signal or error)
+    await server.finished;
+  })();
+
+  return {
+    done,
+    shutdown: () => abortController.abort(),
+  };
 }
