@@ -313,3 +313,141 @@ Deno.test("buildSystemContent - works without sandbox", async () => {
   assert(typeof result === "string");
   assert(result.length > 0);
 });
+
+// ─── Session Persistence Tests ─────────────────────────
+
+const TEST_SESSIONS_DIR = `${Deno.cwd()}/.ca/conversations`;
+
+async function cleanupTestSessions(): Promise<void> {
+  try {
+    const indexRaw = await Deno.readTextFile(`${TEST_SESSIONS_DIR}/index.json`);
+    const index = JSON.parse(indexRaw);
+    for (const s of index.sessions) {
+      if (s.title?.startsWith("TEST:")) {
+        try { await Deno.remove(`${TEST_SESSIONS_DIR}/${s.id}.json`); } catch { /* ok */ }
+      }
+    }
+    // Rewrite index without test sessions
+    index.sessions = index.sessions.filter((s: { title?: string }) => !s.title?.startsWith("TEST:"));
+    await Deno.writeTextFile(`${TEST_SESSIONS_DIR}/index.json`, JSON.stringify(index, null, 2));
+  } catch { /* no index yet */ }
+}
+
+Deno.test("SessionStore - create and load session", async () => {
+  await cleanupTestSessions();
+  const cwd = Deno.cwd();
+  const id = await createSession(cwd, "test-model", "TEST: create/load");
+  assert(typeof id === "string");
+  assert(id.length === 8);
+
+  const msgs = [
+    { role: "system" as const, content: "You are a test" },
+    { role: "user" as const, content: "Hello" },
+    { role: "assistant" as const, content: "Hi there!" },
+  ];
+  await saveSession(cwd, id, msgs, "test-model");
+
+  const loaded = await loadSession(cwd, id);
+  assertEquals(loaded.length, 3);
+  assertEquals(loaded[0].role, "system");
+  assertEquals(loaded[1].content, "Hello");
+  assertEquals(loaded[2].content, "Hi there!");
+
+  await deleteSession(cwd, id);
+});
+
+Deno.test("SessionStore - list sessions sorted by date", async () => {
+  await cleanupTestSessions();
+  const cwd = Deno.cwd();
+
+  const id1 = await createSession(cwd, "model-a", "TEST: first");
+  const id2 = await createSession(cwd, "model-b", "TEST: second");
+
+  // Update id1 so it's more recent
+  const msgs = [{ role: "system" as const, content: "test" }, { role: "user" as const, content: "q" }];
+  await saveSession(cwd, id2, msgs, "model-b");
+  await new Promise(r => setTimeout(r, 10)); // ensure different timestamp
+  await saveSession(cwd, id1, msgs, "model-a");
+
+  const sessions = await listSessions(cwd);
+  const testSessions = sessions.filter(s => s.title?.startsWith("TEST:"));
+  assert(testSessions.length >= 2);
+  // Most recently updated should be first
+  assertEquals(testSessions[0].id, id1);
+
+  await deleteSession(cwd, id1);
+  await deleteSession(cwd, id2);
+});
+
+Deno.test("SessionStore - auto-title from first user message", async () => {
+  await cleanupTestSessions();
+  const cwd = Deno.cwd();
+  const id = await createSession(cwd, "model", "TEST: auto-title");
+
+  const msgs = [
+    { role: "system" as const, content: "You are helpful" },
+    { role: "user" as const, content: "Write a function to sort an array in TypeScript" },
+    { role: "assistant" as const, content: "Here's how..." },
+  ];
+  await saveSession(cwd, id, msgs, "model");
+
+  const sessions = await listSessions(cwd);
+  const session = sessions.find(s => s.id === id);
+  assert(session);
+  assertEquals(session.title, "Write a function to sort an array in TypeScript");
+
+  await deleteSession(cwd, id);
+});
+
+Deno.test("SessionStore - update session title", async () => {
+  await cleanupTestSessions();
+  const cwd = Deno.cwd();
+  const id = await createSession(cwd, "model", "TEST: rename me");
+  await updateSessionTitle(cwd, id, "TEST: renamed");
+  const sessions = await listSessions(cwd);
+  const session = sessions.find(s => s.id === id);
+  assert(session);
+  assertEquals(session.title, "TEST: renamed");
+  await deleteSession(cwd, id);
+});
+
+Deno.test("SessionStore - delete non-existent is safe", async () => {
+  await cleanupTestSessions();
+  const cwd = Deno.cwd();
+  // Should not throw
+  await deleteSession(cwd, "nonexist");
+  // Verify index is still valid
+  const sessions = await listSessions(cwd);
+  assert(Array.isArray(sessions));
+});
+
+Deno.test("SessionStore - sessions survive round-trip with tool calls", async () => {
+  await cleanupTestSessions();
+  const cwd = Deno.cwd();
+  const id = await createSession(cwd, "model", "TEST: tool calls");
+
+  const msgs = [
+    { role: "system" as const, content: "System" },
+    { role: "user" as const, content: "Read file" },
+    {
+      role: "assistant" as const,
+      content: null,
+      tool_calls: [{
+        id: "call_1",
+        type: "function" as const,
+        function: { name: "read_file", arguments: '{"path":"test.ts"}' },
+      }],
+    },
+    { role: "tool" as const, tool_call_id: "call_1", content: "file contents here" },
+  ];
+  await saveSession(cwd, id, msgs, "model");
+
+  const loaded = await loadSession(cwd, id);
+  assertEquals(loaded.length, 4);
+  assertEquals(loaded[2].tool_calls?.length, 1);
+  assertEquals(loaded[2].tool_calls?.[0].function.name, "read_file");
+  assertEquals(loaded[3].role, "tool");
+  assertEquals(loaded[3].content, "file contents here");
+
+  await deleteSession(cwd, id);
+});
