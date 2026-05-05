@@ -178,6 +178,11 @@ export async function* chatCompletionStream(
               const delta = choice.delta;
               if (!delta) continue;
 
+              // Reasoning content delta (thinking mode)
+              if (delta.reasoning_content) {
+                yield { type: "reasoning", content: delta.reasoning_content };
+              }
+
               // Content delta
               if (delta.content) {
                 yield { type: "content", content: delta.content };
