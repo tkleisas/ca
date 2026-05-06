@@ -58,7 +58,8 @@ export interface AgentConfig {
   model: string;
   apiKey: string;
   apiBase: string;
-  maxTokens: number;
+  maxTokens: number;          // Context budget — conversation token cap for warnings/stop
+  maxOutputTokens: number;    // API max_tokens — per-response output limit (model-dependent)
   maxRounds: number;
   maxRetries: number;
   temperature: number;
