@@ -465,6 +465,159 @@ export async function deleteSession(cwd: string, id: string): Promise<void> {
   await writeIndex(cwd, index);
 }
 
+// ─── Subagent Runner ──────────────────────────────────
+
+export async function runSubagent(input: SubagentInput): Promise<SubagentResult> {
+  const cwd = Deno.cwd();
+  const filesExamined = new Set<string>();
+  const keyFindings: string[] = [];
+  let totalTokens = 0;
+
+  // Build restricted config
+  const tools = input.tools ?? ["read_file", "search_files", "list_directory"];
+  const config: AgentConfig = {
+    model: Deno.env.get("CA_MODEL") ?? "deepseek-v4-pro",
+    apiKey: Deno.env.get("CA_API_KEY") ?? "",
+    apiBase: (Deno.env.get("CA_API_BASE") ?? "https://api.deepseek.com/v1").replace(/\/+$/, ""),
+    maxTokens: input.max_tokens ?? 50000,
+    maxRounds: input.max_rounds ?? 20,
+    maxRetries: 2,
+    temperature: 0.0,
+    stop: "",
+    responseFormat: "",
+    logprobs: false,
+    userId: "",
+    thinking: false,
+    reasoningEffort: "",
+    stream: false,
+    sandbox: false,
+    approve: false,
+    dryRun: false,
+    autoCommit: false,
+    tools: {
+      read_file: tools.includes("read_file"),
+      write_file: tools.includes("write_file"),
+      run_command: tools.includes("run_command"),
+      search_files: tools.includes("search_files"),
+      list_directory: tools.includes("list_directory"),
+      ask_user: false,
+      apply_diff: tools.includes("apply_diff"),
+      restart_self: false,
+      test_web: false,
+      spawn_subagent: false,
+      check_subagent: false,
+      await_subagent: false,
+    },
+  };
+
+  const systemPrompt = `You are a subagent of CA. Complete the assigned task efficiently and report back.
+
+## Task
+${input.task}
+
+## Available Tools
+${tools.map(t => `- ${t}`).join("\n")}
+
+## Instructions
+- Work efficiently. Your context window is limited (${config.maxTokens} tokens).
+- Focus ONLY on the assigned task. Do not explore tangents.
+- Track which files you examine and note important findings.
+- When finished, provide a clear, structured summary of what you found.
+- If you cannot complete the task, explain why clearly.
+- You do NOT have ask_user — handle ambiguities yourself.
+- Be thorough: read files before reporting on them.`;
+
+  const defs = buildToolDefs(config);
+  const msgs: ChatMessage[] = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: `Complete the following task:\n\n${input.task}` },
+  ];
+
+  let finalContent = "";
+
+  for (let round = 1; round <= config.maxRounds; round++) {
+    const estTokens = estimateMessagesTokens(msgs);
+    if (estTokens > config.maxTokens * 0.9) {
+      finalContent = "Token budget nearly exhausted. Reporting findings so far.";
+      break;
+    }
+
+    let response: ChatMessage;
+    try {
+      const result = await chatCompletion(msgs, defs, config);
+      response = result.message;
+      if (result.usage) totalTokens += result.usage.totalTokens;
+    } catch (e) {
+      return {
+        id: input.id,
+        status: "error",
+        summary: `API error: ${(e as Error).message}`,
+        rounds: round,
+        tokens_used: totalTokens,
+        files_examined: [...filesExamined],
+        key_findings: keyFindings,
+      };
+    }
+
+    msgs.push(response);
+
+    if (response.tool_calls?.length) {
+      const toolResults = await Promise.all(response.tool_calls.map(async (tc) => {
+        const name = tc.function.name;
+        let args: Record<string, unknown> = {};
+        try { args = JSON.parse(tc.function.arguments); } catch { return { tc, result: `Error: Invalid JSON` }; }
+
+        // Track file access
+        if (name === "read_file" && args.path) filesExamined.add(args.path as string);
+        if (name === "search_files" && args.path) filesExamined.add(args.path as string);
+
+        const result = await executeTool(name, args, {
+          sandbox: false,
+          approve: false,
+          dryRun: false,
+          autoCommit: false,
+          cwd,
+          askUser: undefined,
+        });
+
+        return { tc, result: result.output };
+      }));
+
+      for (const { tc, result } of toolResults) {
+        msgs.push({ role: "tool", tool_call_id: tc.id, content: result });
+      }
+    } else {
+      finalContent = response.content ?? "";
+      break;
+    }
+  }
+
+  // Build result from final content
+  const summary = finalContent || "Task completed but subagent produced no final content.";
+
+  // Try to extract findings from the summary (lines starting with - or *)
+  const lines = summary.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if ((trimmed.startsWith("- ") || trimmed.startsWith("* ")) && !trimmed.match(/^[-*]\s*`/)) {
+      const finding = trimmed.replace(/^[-*]\s+/, "");
+      if (finding.length > 10 && finding.length < 200) {
+        keyFindings.push(finding);
+      }
+    }
+  }
+
+  return {
+    id: input.id,
+    status: finalContent ? "completed" : "max_rounds",
+    summary,
+    rounds: msgs.filter(m => m.role === "assistant").length,
+    tokens_used: totalTokens,
+    files_examined: [...filesExamined].slice(0, 20),
+    key_findings: keyFindings.slice(0, 10),
+  };
+}
+
 export async function updateSessionTitle(cwd: string, id: string, title: string): Promise<void> {
   const index = await readIndex(cwd);
   const session = index.sessions.find((s) => s.id === id);
