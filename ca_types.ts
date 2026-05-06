@@ -49,6 +49,7 @@ export interface ToolParamDef {
   description: string;
   enum?: string[];
   default?: unknown;
+  items?: ToolParamDef;
 }
 
 // ─── Agent Configuration ─────────────────────────────
