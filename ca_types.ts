@@ -94,6 +94,38 @@ export interface EnabledTools {
   apply_diff: boolean;
   restart_self: boolean;
   test_web: boolean;
+  spawn_subagent: boolean;
+  check_subagent: boolean;
+  await_subagent: boolean;
+}
+
+// ─── Subagent Types ─────────────────────────────────
+
+export interface SubagentInput {
+  task: string;
+  tools?: string[];
+  max_tokens?: number;
+  max_rounds?: number;
+  id: string;
+}
+
+export interface SubagentResult {
+  id: string;
+  status: "completed" | "max_rounds" | "error";
+  summary: string;
+  rounds: number;
+  tokens_used: number;
+  files_examined: string[];
+  key_findings: string[];
+}
+
+export interface SubagentHandle {
+  id: string;
+  process: Deno.ChildProcess;
+  startedAt: number;
+  status: "running" | "done" | "error";
+  result?: SubagentResult;
+  errorMsg?: string;
 }
 
 // ─── Project Config File ─────────────────────────────
