@@ -144,6 +144,72 @@ export function buildToolDefs(config: AgentConfig): ToolDef[] {
     });
   }
 
+  if (config.tools.spawn_subagent) {
+    defs.push({
+      type: "function",
+      function: {
+        name: "spawn_subagent",
+        description: `Spawn an isolated subagent to complete a delegated task. Returns the task result.
+
+The subagent runs in a separate process with its own context window. It has access to a restricted set of tools. Use this for:
+- Exploration/research tasks (search codebase, find patterns)
+- Long-running verification work (run tests, check types)
+- Tasks that would pollute the main conversation context
+
+For quick tasks use parallel: false (blocking). For longer tasks, use parallel: true to get an ID immediately, then poll with check_subagent or wait with await_subagent.`,
+        parameters: {
+          type: "object",
+          properties: {
+            task: { type: "string", description: "The task for the subagent to complete. Be specific about what to find, search for, or report on. Include instructions for the expected output format." },
+            tools: {
+              type: "array",
+              items: { type: "string", enum: ["read_file", "write_file", "run_command", "search_files", "list_directory", "apply_diff"] },
+              description: "Tools to grant the subagent. Defaults to read-only: read_file, search_files, list_directory. Use write_file and run_command only when the subagent needs to make changes.",
+            },
+            max_tokens: { type: "number", description: "Max token budget for the subagent. Defaults to 50000." },
+            max_rounds: { type: "number", description: "Max rounds for the subagent. Defaults to 20." },
+            parallel: { type: "boolean", description: "If true, starts the subagent in the background and returns immediately with an ID. Use check_subagent to poll, or await_subagent to block until done. Defaults to false (blocking)." },
+          },
+          required: ["task"],
+        },
+      },
+    });
+  }
+
+  if (config.tools.check_subagent) {
+    defs.push({
+      type: "function",
+      function: {
+        name: "check_subagent",
+        description: "Check the status of a parallel subagent without blocking. Returns the current status and elapsed time. If the subagent has finished, the result is included.",
+        parameters: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "The subagent ID returned by spawn_subagent." },
+          },
+          required: ["id"],
+        },
+      },
+    });
+  }
+
+  if (config.tools.await_subagent) {
+    defs.push({
+      type: "function",
+      function: {
+        name: "await_subagent",
+        description: "Block until a parallel subagent completes and return its result. Use when you need the subagent's output before continuing.",
+        parameters: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "The subagent ID returned by spawn_subagent." },
+          },
+          required: ["id"],
+        },
+      },
+    });
+  }
+
   if (config.tools.test_web) {
     defs.push({
       type: "function",
