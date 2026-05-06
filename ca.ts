@@ -512,7 +512,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
           const success = setConfigValue(key, val);
           if (!success) {
             console.error(`${colorize("✘", C.red)} Unknown key: ${key}`);
-            console.error(dim("  Valid keys: maxRounds, maxRetries, maxTokens, temperature,"));
+            console.error(dim("  Valid keys: maxRounds, maxRetries, maxTokens, maxOutputTokens, temperature,"));
             console.error(dim("             topP, stream, thinking, approve, dryRun,"));
             console.error(dim("             sandbox, autoCommit, model, userId, stop,"));
             console.error(dim("             responseFormat, apiKey"));

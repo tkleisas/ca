@@ -800,6 +800,173 @@ async function execRestartSelf(confirm: boolean, opts: ToolExecOptions): Promise
 
 // ─── Test Web ────────────────────────────────────────────
 
+// ─── Subagent Executors ──────────────────────────────
+
+async function execSpawnSubagent(
+  task: string, tools: string[] | undefined, maxTokens: number | undefined,
+  maxRounds: number | undefined, parallel: boolean, opts: ToolExecOptions,
+): Promise<ToolExecResult> {
+  const err = requireString(task, "task");
+  if (err) return { output: err, error: true };
+  if (opts.dryRun) return { output: `[dry-run] Would spawn subagent for: ${task.substring(0, 120)}`, error: false };
+
+  const id = genSubagentId();
+  const allowedTools = tools ?? ["read_file", "search_files", "list_directory"];
+  // Never allow ask_user or restart_self in subagents
+  const filtered = allowedTools.filter(t => t !== "ask_user" && t !== "restart_self" && t !== "test_web"
+    && t !== "spawn_subagent" && t !== "check_subagent" && t !== "await_subagent");
+
+  const input = {
+    task,
+    tools: filtered,
+    max_tokens: maxTokens ?? 50000,
+    max_rounds: maxRounds ?? 20,
+    id,
+  };
+
+  const cwd = opts.cwd;
+  const apiKey = Deno.env.get("CA_API_KEY") ?? "";
+  const apiBase = Deno.env.get("CA_API_BASE") ?? "https://api.deepseek.com/v1";
+  const model = Deno.env.get("CA_MODEL") ?? "deepseek-v4-pro";
+
+  const cmd = new Deno.Command("deno", {
+    args: ["run", "-A", "ca.ts", "--subagent", "--subagent-id", id,
+      "--api-key", apiKey, "--api-base", apiBase, "--model", model,
+      "--max-tokens", String(input.max_tokens),
+      "--max-rounds", String(input.max_rounds),
+      "--no-sandbox"], // subagent inherits parent cwd, sandbox is per-process
+    cwd,
+    stdin: "piped",
+    stdout: "piped",
+    stderr: "inherit",
+    env: Deno.env.toObject(),
+  });
+
+  const child = cmd.spawn();
+
+  // Write task config to stdin, then close
+  const writer = child.stdin.getWriter();
+  await writer.write(new TextEncoder().encode(JSON.stringify(input)));
+  writer.close();
+
+  if (parallel) {
+    const handle: SubagentHandle = {
+      id,
+      process: child,
+      startedAt: Date.now(),
+      status: "running",
+    };
+    subagents.set(id, handle);
+
+    // Collect result in background to prevent zombie processes
+    collectSubagentResult(id, handle).catch(() => {});
+    return { output: JSON.stringify({ id, status: "running" }), error: false };
+  }
+
+  // Blocking mode: wait for result
+  try {
+    const { stdout } = await child.output();
+    const raw = new TextDecoder().decode(stdout).trim();
+    const result = JSON.parse(raw) as SubagentResult;
+    return { output: formatSubagentResult(result), error: result.status === "error" };
+  } catch (e) {
+    return { output: `Subagent ${id} failed: ${(e as Error).message}`, error: true };
+  }
+}
+
+async function collectSubagentResult(id: string, handle: SubagentHandle): Promise<void> {
+  try {
+    // If output already collected, do nothing
+    if (handle.status !== "running") return;
+
+    // Try a non-blocking-ish approach: wait for process, then parse
+    const { stdout } = await handle.process.output();
+    const raw = new TextDecoder().decode(stdout).trim();
+    if (raw) {
+      try {
+        handle.result = JSON.parse(raw) as SubagentResult;
+        handle.status = "done";
+      } catch {
+        handle.status = "error";
+        handle.errorMsg = `Failed to parse subagent output: ${raw.substring(0, 200)}`;
+      }
+    } else {
+      handle.status = "error";
+      handle.errorMsg = "Subagent produced no output";
+    }
+  } catch (e) {
+    handle.status = "error";
+    handle.errorMsg = (e as Error).message;
+  }
+}
+
+function execCheckSubagent(id: string): ToolExecResult {
+  const err = requireString(id, "id");
+  if (err) return { output: err, error: true };
+
+  const handle = subagents.get(id);
+  if (!handle) return { output: `Error: No subagent found with ID "${id}". It may have completed and been collected.`, error: true };
+
+  const elapsed = Date.now() - handle.startedAt;
+  const result: Record<string, unknown> = { id, status: handle.status, elapsed_ms: elapsed };
+
+  if (handle.status !== "running" && handle.result) {
+    result.result = handle.result;
+    // Clean up after returning result
+    subagents.delete(id);
+  } else if (handle.status === "error") {
+    result.error = handle.errorMsg;
+    subagents.delete(id);
+  }
+
+  return { output: JSON.stringify(result, null, 2), error: false };
+}
+
+async function execAwaitSubagent(id: string): Promise<ToolExecResult> {
+  const err = requireString(id, "id");
+  if (err) return { output: err, error: true };
+
+  const handle = subagents.get(id);
+  if (!handle) return { output: `Error: No subagent found with ID "${id}". It may have completed and been collected.`, error: true };
+
+  try {
+    const { stdout } = await handle.process.output();
+    const raw = new TextDecoder().decode(stdout).trim();
+    const result = JSON.parse(raw) as SubagentResult;
+    subagents.delete(id);
+    return { output: formatSubagentResult(result), error: result.status === "error" };
+  } catch (e) {
+    subagents.delete(id);
+    return { output: `Subagent ${id} failed: ${(e as Error).message}`, error: true };
+  }
+}
+
+function formatSubagentResult(result: SubagentResult): string {
+  const lines: string[] = [
+    `## Subagent Result`,
+    `**ID:** ${result.id}`,
+    `**Status:** ${result.status} in ${result.rounds} rounds`,
+    `**Tokens used:** ${result.tokens_used.toLocaleString()}`,
+    ``,
+    `### Summary`,
+    result.summary,
+  ];
+
+  if (result.key_findings.length > 0) {
+    lines.push(``, `### Key Findings`);
+    for (const f of result.key_findings) {
+      lines.push(`- ${f}`);
+    }
+  }
+
+  if (result.files_examined.length > 0) {
+    lines.push(``, `### Files Examined`);
+    lines.push(result.files_examined.join(", "));
+  }
+
+  return lines.join("\n");
+}
+
 async function execTestWeb(port: number, playwright: boolean, quick: boolean, opts: ToolExecOptions): Promise<ToolExecResult> {
   if (opts.dryRun) return { output: `[dry-run] Would run web tests on port ${port}`, error: false };
 

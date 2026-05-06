@@ -279,7 +279,7 @@ function buildRequestBody(
   const body: Record<string, unknown> = {
     model: config.model,
     messages,
-    max_tokens: config.maxTokens,
+    max_tokens: config.maxOutputTokens,
     temperature: config.temperature,
     tools,
   };

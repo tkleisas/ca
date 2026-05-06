@@ -480,6 +480,7 @@ export async function runSubagent(input: SubagentInput): Promise<SubagentResult>
     apiKey: Deno.env.get("CA_API_KEY") ?? "",
     apiBase: (Deno.env.get("CA_API_BASE") ?? "https://api.deepseek.com/v1").replace(/\/+$/, ""),
     maxTokens: input.max_tokens ?? 50000,
+    maxOutputTokens: Math.min(input.max_tokens ?? 50000, 384000),
     maxRounds: input.max_rounds ?? 20,
     maxRetries: 2,
     temperature: 0.0,

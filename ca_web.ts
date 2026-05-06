@@ -905,7 +905,12 @@ function updateToolResult(id, name, result, isError, diff) {
   if (!tb) return;
   const resDiv = tb.block.querySelector(".tool-result");
   resDiv.style.display = "block";
-  resDiv.className = "tool-result " + (isError ? "error" : "success");
+
+  // Detect subagent "running" status
+  const isRunning = name === "spawn_subagent" && !isError &&
+    (result.includes('"status":"running"') || result.includes('"status": "running"'));
+
+  resDiv.className = "tool-result " + (isError ? "error" : isRunning ? "running" : "success");
   resDiv.textContent = result.length > 2000 ? result.substring(0, 2000) + "…" : result;
 
   if (diff) {
