@@ -615,6 +615,9 @@ async function main(): Promise<void> {
     } else if (a === "--max-tokens" && args[i + 1]) {
       cliOverrides.maxTokens = parseInt(args[++i]);
       i++;
+    } else if (a === "--max-output-tokens" && args[i + 1]) {
+      cliOverrides.maxOutputTokens = parseInt(args[++i]);
+      i++;
     } else if (a === "--max-rounds" && args[i + 1]) {
       cliOverrides.maxRounds = parseInt(args[++i]);
       i++;
