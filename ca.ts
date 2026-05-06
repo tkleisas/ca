@@ -3,7 +3,7 @@
 import type { ChatMessage, AgentConfig } from "./ca_types.ts";
 import { VERSION } from "./ca_types.ts";
 import { initConfig, getConfig, applyCliOverrides } from "./ca_config.ts";
-import { buildSystemContent, run, saveConversation, loadConversation } from "./ca_agent.ts";
+import { buildSystemContent, run, saveConversation, loadConversation, runSubagent } from "./ca_agent.ts";
 import type { RunResult } from "./ca_agent.ts";
 import { C, colorize, dim, bold, printBanner, separator, highlightCode } from "./ca_ui.ts";
 import { startWebServer, type WebServerHandle } from "./ca_web.ts";
