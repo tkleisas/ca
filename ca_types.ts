@@ -46,7 +46,7 @@ export interface ToolDef {
 
 export interface ToolParamDef {
   type: string;
-  description: string;
+  description?: string;
   enum?: string[];
   default?: unknown;
   items?: ToolParamDef;
