@@ -1,6 +1,15 @@
-import type { ToolDef, AgentConfig, ToolExecResult } from "./ca_types.ts";
+import type { ToolDef, AgentConfig, ToolExecResult, SubagentHandle, SubagentResult } from "./ca_types.ts";
 import { C, colorize, dim, bold } from "./ca_ui.ts";
 import { isPathSafe, isCommandSafe } from "./ca_sandbox.ts";
+
+// ─── Subagent Process Registry ───────────────────────
+
+const subagents = new Map<string, SubagentHandle>();
+
+function genSubagentId(): string {
+  return "sub-" + [...crypto.getRandomValues(new Uint8Array(4))]
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
 // ─── Tool Definitions ─────────────────────────────────
 
