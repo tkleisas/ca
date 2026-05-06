@@ -696,6 +696,37 @@ async function main(): Promise<void> {
   await initConfig(cliOverrides);
   const config = getConfig();
 
+  // ─── Subagent Mode ───────────────────────────────────
+  if (subagentMode) {
+    const decoder = new TextDecoder();
+    let stdinData = "";
+    const buf = new Uint8Array(65536);
+    while (true) {
+      const n = await Deno.stdin.read(buf);
+      if (n === null) break;
+      stdinData += decoder.decode(buf.subarray(0, n));
+    }
+    try {
+      const input = JSON.parse(stdinData) as import("./ca_types.ts").SubagentInput;
+      if (!subagentId) subagentId = input.id;
+      const result = await runSubagent(input);
+      const output = JSON.stringify(result);
+      await Deno.stdout.write(new TextEncoder().encode(output));
+    } catch (e) {
+      const errResult = {
+        id: subagentId || "subagent",
+        status: "error",
+        summary: `Subagent crashed: ${(e as Error).message}`,
+        rounds: 0,
+        tokens_used: 0,
+        files_examined: [],
+        key_findings: [],
+      };
+      await Deno.stdout.write(new TextEncoder().encode(JSON.stringify(errResult)));
+    }
+    Deno.exit(0);
+  }
+
   // Resume from saved conversation
   if (config.resumeFile) {
     console.error(`${colorize("📂", C.cyan)} ${bold("Resuming conversation...")}`);
