@@ -459,7 +459,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
 
           if (!key || val === undefined) {
             console.error(`${colorize("✘", C.red)} Usage: /set <key> <value>`);
-            console.error(dim("  Keys: maxRounds, maxRetries, maxTokens, temperature,"));
+            console.error(dim("  Keys: maxRounds, maxRetries, maxTokens, maxOutputTokens, temperature,"));
             console.error(dim("        topP, stream (on/off), thinking (on/off),"));
             console.error(dim("        approve (on/off), dryRun (on/off), sandbox (on/off),"));
             console.error(dim("        autoCommit (on/off), model, userId, stop, responseFormat"));
@@ -469,7 +469,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
           // Map string keys to config fields and their types
           function setConfigValue(k: string, v: string): boolean {
             switch (k) {
-              case "maxRounds": case "maxRetries": case "maxTokens": {
+              case "maxRounds": case "maxRetries": case "maxTokens": case "maxOutputTokens": {
                 const n = parseInt(v);
                 if (isNaN(n)) return false;
                 const ov: Partial<AgentConfig> = {}; ov[k] = n; applyCliOverrides(ov);
