@@ -78,7 +78,8 @@ ${b("Options:")}
   ${c("-m, --model")} ${d("<name>")}              ${d("Model (default: deepseek-v4-pro)")}
   ${c("--api-base")} ${d("<url>")}                ${d("API base URL")}
   ${c("--api-key")} ${d("<key>")}                 ${d("API key")}
-  ${c("--max-tokens")} ${d("<n>")}                ${d("Max tokens per response (default: 1,000,000)")}
+  ${c("--max-tokens")} ${d("<n>")}                ${d("Max context tokens before stopping (default: 1,000,000)")}
+  ${c("--max-output-tokens")} ${d("<n>")}         ${d("Max tokens per API response (default: 384,000)")}
   ${c("--max-rounds")} ${d("<n>")}                ${d("Max agent rounds (default: 100)")}
   ${c("--max-retries")} ${d("<n>")}              ${d("Max API retry attempts (default: 3)")}
   ${c("--temperature")} ${d("<f>")}               ${d("Temperature (0-2, default: 0.0)")}
