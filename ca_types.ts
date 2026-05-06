@@ -137,6 +137,7 @@ export interface CaJsonConfig {
   api_base?: string;
   api_key?: string;
   max_tokens?: number;
+  max_output_tokens?: number;
   max_rounds?: number;
   max_retries?: number;
   temperature?: number;
