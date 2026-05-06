@@ -1,4 +1,4 @@
-import type { ChatMessage, ConversationExport, AgentConfig } from "./ca_types.ts";
+import type { ChatMessage, ConversationExport, AgentConfig, SubagentInput, SubagentResult } from "./ca_types.ts";
 import { VERSION } from "./ca_types.ts";
 import { buildToolDefs, executeTool, type AskUserCallback } from "./ca_tools.ts";
 import { chatCompletion, estimateMessagesTokens } from "./ca_client.ts";
