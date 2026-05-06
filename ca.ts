@@ -680,6 +680,12 @@ async function main(): Promise<void> {
     } else if (a === "--web-port" && args[i + 1]) {
       webPort = parseInt(args[++i]);
       i++;
+    } else if (a === "--subagent") {
+      subagentMode = true;
+      i++;
+    } else if (a === "--subagent-id" && args[i + 1]) {
+      subagentId = args[++i];
+      i++;
     } else {
       promptParts.push(a);
       i++;
