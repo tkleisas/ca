@@ -586,6 +586,8 @@ async function main(): Promise<void> {
   let interactiveMode = false;
   let webMode = false;
   let webPort = 9420;
+  let subagentMode = false;
+  let subagentId = "";
   const cliOverrides: Partial<AgentConfig> = {};
   let i = 0;
 
