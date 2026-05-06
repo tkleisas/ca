@@ -276,6 +276,9 @@ export async function executeTool(
     case "ask_user":        return execAskUser(args.question as string, opts);
     case "apply_diff":      return execApplyDiff(args.path as string, args.search as string, args.replace as string, opts);
     case "restart_self":    return execRestartSelf(args.confirm as boolean, opts);
+    case "spawn_subagent":  return execSpawnSubagent(args.task as string, args.tools as string[] | undefined, args.max_tokens as number | undefined, args.max_rounds as number | undefined, args.parallel as boolean ?? false, opts);
+    case "check_subagent":  return execCheckSubagent(args.id as string);
+    case "await_subagent":  return execAwaitSubagent(args.id as string);
     case "test_web":        return execTestWeb((args.port as number) ?? 9420, args.playwright as boolean ?? false, args.quick as boolean ?? false, opts);
     default:                return { output: `Unknown tool: ${name}`, error: true };
   }
