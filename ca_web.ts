@@ -262,6 +262,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monos
 .tool-result { padding: 6px 10px; font-size: 12px; line-height: 1.4; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
 .tool-result.error { color: #f85149; background: #1a1115; }
 .tool-result.success { color: #8b949e; }
+.tool-result.running { color: #d2991d; animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 .tool-diff { padding: 6px 10px; font-size: 12px; white-space: pre-wrap; font-family: monospace; max-height: 200px; overflow-y: auto; }
 .tool-diff .add { color: #7ee787; }
 .tool-diff .del { color: #f85149; }
