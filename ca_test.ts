@@ -141,6 +141,9 @@ function makeTestConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
       apply_diff: true,
       restart_self: true,
       test_web: true,
+      spawn_subagent: true,
+      check_subagent: true,
+      await_subagent: true,
     },
     ...overrides,
   };
