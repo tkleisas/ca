@@ -890,7 +890,7 @@ function addToolCall(id, name, args) {
   const block = document.createElement("div");
   block.className = "tool-block";
   block.id = "tool-" + id;
-  const icons = { read_file: "📖", write_file: "✏️", run_command: "⚡", search_files: "🔍", list_directory: "📁", ask_user: "💬", apply_diff: "📝", restart_self: "🔄" };
+  const icons = { read_file: "📖", write_file: "✏️", run_command: "⚡", search_files: "🔍", list_directory: "📁", ask_user: "💬", apply_diff: "📝", restart_self: "🔄", spawn_subagent: "🤖", check_subagent: "🔎", await_subagent: "⏳" };
   const icon = icons[name] || "🔧";
   const argsStr = JSON.stringify(args, null, 0).substring(0, 120);
   block.innerHTML = \`<div class="tool-header"><span class="icon">\${icon}</span><span class="name">\${name}</span><span class="args">\${escapeHtml(argsStr)}</span></div><div class="tool-result" style="display:none"></div>\`;
