@@ -177,6 +177,9 @@ Deno.test("buildToolDefs - respects disabled tools", () => {
       apply_diff: false,
       restart_self: false,
       test_web: false,
+      spawn_subagent: false,
+      check_subagent: false,
+      await_subagent: false,
     },
   });
   const tools = buildToolDefs(config);
