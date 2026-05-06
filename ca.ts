@@ -345,7 +345,8 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
           console.error(`\n${sep}`);
           console.error(`${bold("Model:")} ${config.model}`);
           console.error(`${bold("API Base:")} ${config.apiBase}`);
-          console.error(`${bold("Max tokens:")} ${config.maxTokens}`);
+          console.error(`${bold("Max context tokens:")} ${config.maxTokens.toLocaleString()}`);
+          console.error(`${bold("Max output tokens:")} ${config.maxOutputTokens.toLocaleString()}`);
           console.error(`${bold("Max rounds:")} ${config.maxRounds}`);
           console.error(`${bold("Max retries:")} ${config.maxRetries}`);
           console.error(`${bold("Temperature:")} ${config.temperature}`);
