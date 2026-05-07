@@ -1446,6 +1446,20 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
           // Session not found, create new below
         }
       }
+      // Autoload most recent session
+      try {
+        const sessions = await listSessions(cwd);
+        if (sessions.length > 0) {
+          const lastSession = sessions[0];
+          const loaded = await loadSession(cwd, lastSession.id);
+          if (loaded.length > 0 && loaded[0].role === "system") {
+            loaded[0].content = systemContent;
+          }
+          messages = loaded;
+          currentSessionId = lastSession.id;
+          return;
+        }
+      } catch { /* fall through to fresh start */ }
       const id = await createSession(cwd, config.model);
       currentSessionId = id;
       messages = [{ role: "system", content: systemContent }];
