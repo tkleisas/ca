@@ -1249,6 +1249,7 @@ ${CSS}
     <div id="input-area">
       <textarea id="input" rows="2" placeholder="Send a message… (Ctrl+Enter to send)"></textarea>
       <button id="send-btn">Send</button>
+      <button id="abort-btn">Stop</button>
     </div>
   </div>
   <div id="viewer-overlay" style="display:none">
