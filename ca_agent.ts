@@ -175,12 +175,13 @@ export async function run(
       break;
     }
 
-    // Token budget check (estimated context size)
+    // Token budget check (estimated context size) — show when significant
     const estTokens = estimateMessagesTokens(msgs);
     const tokenPct = ((estTokens / config.maxTokens) * 100).toFixed(1);
     if (round === 1 || estTokens > config.maxTokens * 0.3) {
+      const color = estTokens > config.maxTokens * 0.7 ? C.yellow : C.dim;
       console.error(
-        dim(`  [context: ~${estTokens.toLocaleString()} / ${config.maxTokens.toLocaleString()} tokens (${tokenPct}%)]`),
+        colorize(`  [context: ${estTokens.toLocaleString()} / ${config.maxTokens.toLocaleString()} (${tokenPct}%)]`, color),
       );
     }
     if (estTokens > config.maxTokens * 0.85) {

@@ -787,7 +787,7 @@ function finishAssistant(rounds, usage) {
   currentToolBlocks = new Map();
   if (usage) {
     document.getElementById("sb-stats").innerHTML =
-      \`Tokens: <span style="color:#58a6ff">\${usage.totalTokens.toLocaleString()}</span> total &nbsp;<span style="color:#484f58">(in:\${usage.promptTokens.toLocaleString()} out:\${usage.completionTokens.toLocaleString()})</span>\`;
+      \`Tokens: <span style="color:#58a6ff">\${usage.totalTokens.toLocaleString()}</span> this round &nbsp;<span style="color:#484f58">(in:\${usage.promptTokens.toLocaleString()} out:\${usage.completionTokens.toLocaleString()})</span>\`;
   }
 }
 

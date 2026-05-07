@@ -215,7 +215,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
 
   while (true) {
     const input = await rl.readMultiLine();
-    if (input === null) break;
+    if (input === null) { rl.restore(); break; }
 
     const trimmed = input.trim();
 

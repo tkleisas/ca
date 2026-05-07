@@ -169,11 +169,16 @@ export function formatToolCall(name: string, args: Record<string, unknown>): str
   return `  ${icon} ${colorize(bold(name), C.cyan)} ${dim(argsStr)}`;
 }
 
-export function formatToolResult(result: string): string {
+export function formatToolResult(result: string, elapsedSec?: string): string {
   const lines = result.split("\n").length;
   const isError = result.startsWith("Error");
   const statusColor = isError ? C.red : C.green;
-  return `  ${colorize("↳", statusColor)} ${dim(`${result.length} bytes, ${lines} lines`)}`;
+  const statusIcon = isError ? "✘" : "✓";
+  const timing = elapsedSec ? ` ${dim(`(${elapsedSec}s)`)}` : "";
+  const preview = result.length > 120
+    ? result.substring(0, 120).replace(/\n/g, " ") + "..."
+    : result.replace(/\n/g, " ");
+  return `  ${colorize(statusIcon, statusColor)} ${dim(`${preview}`)}${timing}`;
 }
 
 // ─── Syntax Highlighting (basic) ──────────────────────
