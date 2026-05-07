@@ -416,6 +416,7 @@ function handleEvent(ev) {
 
     case "thinking":
       streaming = true;
+      document.getElementById("abort-btn").classList.add("visible");
       setSendEnabled(false);
       addThinking(ev.round, ev.maxRounds);
       break;
@@ -461,6 +462,7 @@ function handleEvent(ev) {
     case "error":
       addError(ev.message);
       streaming = false;
+      document.getElementById("abort-btn").classList.remove("visible");
       setSendEnabled(true);
       break;
 
@@ -468,18 +470,21 @@ function handleEvent(ev) {
       removeThinking();
       finishAssistant(ev.rounds, ev.usage);
       streaming = false;
+      document.getElementById("abort-btn").classList.remove("visible");
       setSendEnabled(true);
       break;
 
     case "restart":
       addWarning("CA is restarting with a new version…");
       streaming = false;
+      document.getElementById("abort-btn").classList.remove("visible");
       setSendEnabled(true);
       break;
 
     case "aborted":
       addWarning("Operation aborted.");
       streaming = false;
+      document.getElementById("abort-btn").classList.remove("visible");
       setSendEnabled(true);
       break;
 
