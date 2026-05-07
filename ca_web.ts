@@ -148,7 +148,7 @@ export async function runWebAgent(
         }));
       }
 
-      if (usage) totalTokens += usage.totalTokens;
+      if (usage) totalApiTokens += usage.totalTokens;
     } catch (e) {
       onEvent({ type: "error", message: `API error: ${(e as Error).message}` });
       return { messages: msgs, needsRestart: false };
