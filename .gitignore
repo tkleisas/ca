@@ -1,0 +1,15 @@
+# CA session data (autosaved conversations)
+.ca_resume.json
+.ca/
+
+# Deno
+.cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
