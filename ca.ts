@@ -613,6 +613,12 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
         signal: abortController.signal,
       });
       messages = result.messages;
+      // Autosave after each step
+      if (currentSessionId) {
+        try {
+          await saveSession(cwd, currentSessionId, messages, config.model);
+        } catch { /* non-critical */ }
+      }
       if (result.needsRestart) {
         await performRestart(`${Deno.cwd()}/.ca_resume.json`);
       }
