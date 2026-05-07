@@ -176,17 +176,17 @@ export async function* runAgentStream(
         yield { type: "tool_result", toolId: tc.id, toolName: tc.function.name, toolResult: result, toolError: error, diff, round };
         msgs.push({ role: "tool", tool_call_id: tc.id, content: result });
         if (result === "RESTART_READY") {
-          yield { type: "done", usage };
+          yield { type: "done", usage, messages: structuredClone(msgs), needsRestart: true };
           return { messages: msgs, needsRestart: true };
         }
       }
 
       if (config.dryRun) {
-        yield { type: "done", usage };
+        yield { type: "done", usage, messages: structuredClone(msgs), needsRestart: false };
         return { messages: msgs, needsRestart: false };
       }
     } else {
-      yield { type: "done", usage };
+      yield { type: "done", usage, messages: structuredClone(msgs), needsRestart: false };
       return { messages: msgs, needsRestart: false };
     }
   }

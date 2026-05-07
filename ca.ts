@@ -1031,22 +1031,14 @@ async function main(): Promise<void> {
     // Don't return — fall through to interactive mode or single-shot below
   }
 
-  // Interactive mode
-  if (interactiveMode) {
+  // Interactive mode - use TUI if terminal supports it
+  if (interactiveMode || (webMode && promptParts.length === 0)) {
     ensureApiKey(config);
-    await interactive();
-    return;
-  }
-
-  // If web mode is on and no explicit mode/prompt, default to interactive
-  if (webMode && !interactiveMode && promptParts.length === 0) {
-    interactiveMode = true;
-  }
-
-  // Enter interactive mode if set (may have been set by web mode fallthrough)
-  if (interactiveMode) {
-    ensureApiKey(config);
-    await interactive();
+    if (Deno.stderr.isTerminal() && Deno.stdin.isTerminal()) {
+      await interactiveTui();
+    } else {
+      await interactive();
+    }
     return;
   }
 
