@@ -166,7 +166,7 @@ export async function run(
   msgs.push({ role: "user", content: prompt });
 
   const spinner = new Spinner();
-  let totalTokens = estimateMessagesTokens(msgs);
+  let totalApiTokens = 0; // actual tokens from API responses
 
   for (let round = 1; round <= config.maxRounds; round++) {
     // Check for abort signal
@@ -175,7 +175,7 @@ export async function run(
       break;
     }
 
-    // Token budget check
+    // Token budget check (estimated context size)
     const estTokens = estimateMessagesTokens(msgs);
     const tokenPct = ((estTokens / config.maxTokens) * 100).toFixed(1);
     if (round === 1 || estTokens > config.maxTokens * 0.3) {
@@ -204,7 +204,7 @@ export async function run(
       response = result.message;
       usage = result.usage;
       if (usage) {
-        totalTokens += usage.totalTokens;
+        totalApiTokens += usage.totalTokens;
       }
     } catch (e) {
       spinner.fail(`API error: ${(e as Error).message}`);
