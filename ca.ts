@@ -294,7 +294,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
           console.error(`  ${colorize("/set", C.cyan)} <k> <v>  ${dim("Set config: maxRounds, maxRetries, maxTokens, temperature, ...")}`);
           console.error(`  ${colorize("/quit", C.cyan)}         ${dim("Exit")}`);
           console.error(`  ${colorize("/exit", C.cyan)}         ${dim("Exit")}`);
-          console.error(`\n${dim("Multi-line: Type \\e on a new line to submit.")}`);
+          console.error(`\n${dim("Enter to send. \\ at end of line to continue. Up/Down for history.")}`);
           console.error("");
           continue;
 
