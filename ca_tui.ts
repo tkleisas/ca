@@ -133,16 +133,29 @@ export async function* runAgentStream(
 
     // Execute tools
     if (response.tool_calls?.length) {
-      // Phase 1: emit tool_call events and parse args
-      const toolTasks = response.tool_calls.map(async (tc) => {
+      // Phase 1: parse args, emit tool_call events
+      interface ToolTask {
+        tc: ToolCall;
+        name: string;
+        args: Record<string, unknown>;
+      }
+      const tasks: ToolTask[] = [];
+      for (const tc of response.tool_calls) {
         const name = tc.function.name;
         let args: Record<string, unknown> = {};
         try { args = JSON.parse(tc.function.arguments); } catch {
-          return { tc, result: `Error: Invalid JSON`, error: true };
+          yield { type: "tool_error", toolId: tc.id, toolName: name, message: "Invalid JSON arguments" };
+          msgs.push({ role: "tool", tool_call_id: tc.id, content: "Error: Invalid JSON arguments" });
+          continue;
         }
-        yield { type: "tool_call" as const, toolId: tc.id, toolName: name, toolArgs: args, round };
+        yield { type: "tool_call", toolId: tc.id, toolName: name, toolArgs: args, round };
+        tasks.push({ tc, name, args });
+      }
+
+      // Phase 2: execute all in parallel
+      const results = await Promise.all(tasks.map(async ({ tc, name, args }) => {
         try {
-          const result = await executeTool(name, args, {
+          const r = await executeTool(name, args, {
             sandbox: config.sandbox,
             approve: config.approve,
             dryRun: config.dryRun,
@@ -150,30 +163,15 @@ export async function* runAgentStream(
             cwd: Deno.cwd(),
             askUser: undefined,
           });
-          return { tc, result: result.output, error: false, diff: result.diff };
+          return { tc, result: r.output, error: r.output.startsWith("Error"), diff: r.diff };
         } catch (e) {
           return { tc, result: `Error: ${(e as Error).message}`, error: true };
         }
-      });
+      }));
 
-      // Execute all in parallel, collecting results
-      const toolResults: Array<{ tc: ToolCall; result: string; error: boolean; diff?: string }> = [];
-      for (const task of toolTasks) {
-        toolResults.push(await task);
-      }
-
-      // Phase 2: emit results and add tool messages
-      for (const { tc, result, error, diff } of toolResults) {
-        const isError = error || result.startsWith("Error");
-        yield {
-          type: "tool_result" as const,
-          toolId: tc.id,
-          toolName: tc.function.name,
-          toolResult: result,
-          toolError: isError,
-          diff,
-          round,
-        };
+      // Phase 3: emit results
+      for (const { tc, result, error, diff } of results) {
+        yield { type: "tool_result", toolId: tc.id, toolName: tc.function.name, toolResult: result, toolError: error, diff, round };
         msgs.push({ role: "tool", tool_call_id: tc.id, content: result });
       }
 
