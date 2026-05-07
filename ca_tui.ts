@@ -295,11 +295,11 @@ export class Tui {
       this.spinnerFrame = 0;
       this.spinnerInterval = setInterval(() => {
         this.spinnerFrame = (this.spinnerFrame + 1) % this.spinnerChars.length;
-        this.render();
+        this.renderNow();
       }, 80);
     } else {
       if (this.spinnerInterval) { clearInterval(this.spinnerInterval); this.spinnerInterval = null; }
-      this.render();
+      this.renderNow();
     }
   }
 
