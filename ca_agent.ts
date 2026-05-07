@@ -255,7 +255,8 @@ export async function run(
             askUser,
           });
 
-          console.error(formatToolResult(result.output));
+          const elapsed = ((Date.now() - roundStart) / 1000).toFixed(1);
+          console.error(formatToolResult(result.output, elapsed));
 
           return { tc, result: result.output };
         }),
