@@ -633,6 +633,6 @@ export class Tui {
     const totalLines = visibleConv.length + padLines + 3 + visibleInput.length;
     const remaining = Math.max(0, this.height - totalLines);
     const outWithPad = out + "\n" + (" ".repeat(this.width)).repeat(Math.max(0, remaining - 1));
-    Deno.stdout.writeSync(this.encoder.encode(esc("H") + outWithPad));
+    Deno.stderr.writeSync(this.encoder.encode(esc("H") + outWithPad));
   }
 }
