@@ -244,6 +244,7 @@ export class Tui {
   private spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
   private dirty = true;
   private renderScheduled = false;
+  private readingInput = false;
 
   constructor() {}
 
