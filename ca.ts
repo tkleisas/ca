@@ -200,17 +200,64 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
 
   printBanner(config);
 
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  let stdinBuffer = "";
+  const history: string[] = [];
   const rl = new Readline(500);
+
+  // Simple buffered readline with optional raw-mode for history
+  async function readLine(promptStr: string): Promise<string | null> {
+    if (!Deno.stdin.isTerminal()) {
+      // Non-TTY fallback
+      const buf = new Uint8Array(4096);
+      const n = await Deno.stdin.read(buf);
+      if (n === null) return null;
+      const line = decoder.decode(buf.subarray(0, n));
+      return line.replace(/\r?\n$/, "");
+    }
+
+    // Try raw mode for history navigation
+    return rl.readLineSimple(promptStr, history);
+  }
 
   // askUser callback for interactive mode
   async function askUserCallback(question: string): Promise<string> {
     console.error(`\n${colorize("💬", C.cyan)} ${bold("Agent asks:")} ${question}`);
-    const answer = await rl.readLine(`${colorize("❯❯ ", C.cyan)}`);
+    const answer = await readLine(`${colorize("❯❯ ", C.cyan)}`);
     return answer?.trim() ?? "";
   }
 
-  console.error(dim("Enter to send. \\ at end of line to continue. /help for commands."));
-  console.error(dim("Up/Down for history. Ctrl+D to exit."));
+  // Multi-line input support (\\e to submit)
+  async function readMultiLine(): Promise<string | null> {
+    const lines: string[] = [];
+    let firstLine = true;
+
+    while (true) {
+      const promptStr = firstLine
+        ? colorize("❯ ", C.cyan)
+        : colorize("│ ", dim(""));
+
+      const line = await readLine(promptStr);
+      firstLine = false;
+
+      if (line === null) {
+        return lines.length > 0 ? lines.join("\n") : null;
+      }
+
+      if (lines.length === 0 && line.trim() === "") {
+        return "";
+      }
+
+      if (line.trim() === "\\e") {
+        return lines.join("\n");
+      }
+
+      lines.push(line);
+    }
+  }
+
+  console.error(dim("Type \\e on a new line to submit multi-line input. /help for commands."));
   console.error("");
 
   while (true) {
