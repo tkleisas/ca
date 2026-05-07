@@ -263,6 +263,7 @@ export class Tui {
   }
 
   shutdown() {
+    if (this.spinnerInterval) { clearInterval(this.spinnerInterval); this.spinnerInterval = null; }
     Deno.stdin.setRaw(false);
     Deno.stdout.writeSync(this.encoder.encode(
       esc("?25h") + esc("?1049l")
