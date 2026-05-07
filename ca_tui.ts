@@ -352,8 +352,8 @@ export class Tui {
         }
 
         if (b === 27) { this.escapeBytes = [27]; continue; }
-        if (b === 24) { this.readingInput = false; return this.inputBuf.trim() || null; }
-        if (b === 10) { this.readingInput = false; return this.inputBuf.trim() || null; }
+        if (b === 24) return this.inputBuf.trim() || null;
+        if (b === 10) return this.inputBuf.trim() || null;
         if (b === 13) { this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + "\n" + this.inputBuf.substring(this.inputCursor); this.inputCursor++; continue; }
         if (b === 127 || b === 8) { if (this.inputCursor > 0) { this.inputBuf = this.inputBuf.substring(0, this.inputCursor - 1) + this.inputBuf.substring(this.inputCursor); this.inputCursor--; } continue; }
         if (b === 9) { this.doAutoComplete(); continue; }
