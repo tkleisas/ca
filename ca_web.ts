@@ -422,8 +422,11 @@ function handleEvent(ev) {
       break;
 
     case "token_update":
+      var apiStr = ev.apiUsed && ev.apiUsed > 0
+        ? \`<br>API: <span style="color:#58a6ff">\${ev.apiUsed.toLocaleString()}</span> total\`
+        : "";
       document.getElementById("sb-stats").innerHTML =
-        \`Tokens: <span style="color:#58a6ff">~\${ev.used.toLocaleString()}</span> / \${ev.max.toLocaleString()} <span style="color:#484f58">(\${ev.pct}%)</span>\`;
+        \`Tokens: <span style="color:#58a6ff">~\${ev.used.toLocaleString()}</span> / \${ev.max.toLocaleString()} <span style="color:#484f58">(\${ev.pct}%)</span>\${apiStr}\`;
       break;
 
     case "assistant_text":
