@@ -1506,7 +1506,7 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
           }));
           // Send loaded messages for initial display
           const msgs = messages.filter(m => m.role !== "system").map(m => ({
-            role: m.role, content: m.content?.substring(0, 300) ?? null,
+            role: m.role, content: m.content,
           }));
           if (msgs.length > 0) {
             socket.send(JSON.stringify({
