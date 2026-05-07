@@ -550,24 +550,29 @@ export class Tui {
     const statusPad = Math.max(1, this.width - statusLeft.length - statusRight.length - 1);
     const statusLine = `${REVERSE}${TOP_COLOR} ${statusLeft}${" ".repeat(statusPad)}${DIM_COLOR}${statusRight} ${RESET}`;
 
-    // Input area
+    // Input area (2 lines, bottom-justified)
     const inputLines = this.inputBuf.split("\n");
-    const inputAvail = 2; // 2 lines for input
+    const inputAvail = 2;
     const visibleInput = inputLines.slice(-inputAvail);
-    // Pad input area
-    for (let i = visibleInput.length; i < inputAvail; i++) {
-      visibleInput.unshift("");
-    }
+    while (visibleInput.length < inputAvail) visibleInput.unshift("");
+
+    // Current line index within the visible input (0 = top, 1 = bottom)
+    const currentLineIdx = Math.min(inputLines.length - 1, inputAvail - 1);
+    const currentLineText = visibleInput[currentLineIdx] ?? "";
+    const cursorInLine = (inputLines.length <= inputAvail)
+      ? this.inputCursor  // all lines visible
+      : this.inputCursor; // last 2 lines shown, cursor is in the last line
+
     const inputRendered = visibleInput.map((l, i) => {
-      const prefix = i === 0 ? "❯ " : "  ";
-      const cursorAt = i === visibleInput.length - 1 ? this.inputCursor - (inputLines.length - visibleInput.length > 0 ? 0 : 0) : -1;
-      if (cursorAt >= 0 && i === visibleInput.length - 1) {
+      const isCurrentLine = i === currentLineIdx;
+      const prefix = i === 0 ? `${DIM_COLOR}❯${RESET} ` : "  ";
+      if (isCurrentLine && this.inputCursor >= 0) {
         const before = l.substring(0, this.inputCursor);
         const at = l[this.inputCursor] || " ";
         const after = l.substring(this.inputCursor + 1);
         return `${prefix}${before}${REVERSE}${at}${RESET}${after}`;
       }
-      return `${prefix}${l}`;
+      return `${DIM_COLOR}${prefix}${RESET}${l}`;
     }).join("\n");
 
     // Assemble
