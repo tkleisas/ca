@@ -3,6 +3,6 @@ FROM docker.io/library/dotnet:10.0-aspnet
 WORKDIR /app
 COPY . /app
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV CMS_ADMIN_PASSWORD=gn01cms
+# CMS_ADMIN_PASSWORD is set at runtime via podman -e
 EXPOSE 5000
 ENTRYPOINT ["dotnet", "Gn01Cms.Web.dll"]
