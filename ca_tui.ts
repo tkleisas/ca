@@ -415,7 +415,10 @@ export class Tui {
     } else {
       this.lines.push({ role: "assistant", text });
     }
-    this.scrollOffset = 0;
+    // Auto-scroll to bottom
+    const convLines = this.getConversationLines();
+    const convAvail = Math.max(1, this.height - 4);
+    this.scrollOffset = Math.max(0, convLines.length - convAvail);
     this.render();
   }
 
