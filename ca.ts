@@ -263,10 +263,11 @@ async function interactiveTui(existingMessages?: ChatMessage[]): Promise<void> {
         continue;
       }
 
-      // Run agent
+      // Run agent — add user message to conversation, clear input
       abortController = new AbortController();
       tui.setRunning(true);
       tui.addMessage({ role: "user", content: input });
+      // Input cleared by addMessage's rebuild
 
       try {
         const stream = runAgentStream(input, messages, config, abortController.signal);

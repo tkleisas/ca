@@ -426,6 +426,8 @@ export class Tui {
 
   addMessage(msg: ChatMessage) {
     this.messages.push(msg);
+    this.inputBuf = "";
+    this.inputCursor = 0;
     this.rebuildLines();
     // Auto-scroll to bottom
     const convLines = this.getConversationLines();
