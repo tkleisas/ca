@@ -173,10 +173,6 @@ export async function* runAgentStream(
       for (const { tc, result, error, diff } of results) {
         yield { type: "tool_result", toolId: tc.id, toolName: tc.function.name, toolResult: result, toolError: error, diff, round };
         msgs.push({ role: "tool", tool_call_id: tc.id, content: result });
-      }
-
-      for (const { tc, result } of toolResults) {
-        msgs.push({ role: "tool", tool_call_id: tc.id, content: result });
         if (result === "RESTART_READY") {
           yield { type: "done", usage };
           return { messages: msgs, needsRestart: true };
