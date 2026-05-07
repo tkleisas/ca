@@ -239,6 +239,9 @@ export class Tui {
   private running = false;
   private aborted = false;
   private encoder = new TextEncoder();
+  private spinnerFrame = 0;
+  private spinnerInterval: number | null = null;
+  private spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
   constructor() {}
 
