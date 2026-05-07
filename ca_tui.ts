@@ -676,9 +676,11 @@ export class Tui {
       inputRendered,
     ].join("\n");
 
-    // Move cursor to top-left and redraw (avoids full clear flicker)
-    Deno.stdout.writeSync(this.encoder.encode(
-      esc("H") + out + esc("J")
-    ));
+    // Move cursor to top-left, redraw, pad remaining lines with spaces
+    // (Avoids ESC[J which can interfere with raw mode input)
+    const totalLines = visibleConv.length + padLines + 3 + visibleInput.length;
+    const remaining = Math.max(0, this.height - totalLines);
+    const outWithPad = out + "\n" + (" ".repeat(this.width)).repeat(Math.max(0, remaining - 1));
+    Deno.stdout.writeSync(this.encoder.encode(esc("H") + outWithPad));
   }
 }
