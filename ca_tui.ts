@@ -556,8 +556,10 @@ export class Tui {
     this.scheduleRender();
   }
 
+  /** Force a synchronous render (use carefully - emits escape codes) */
   private renderNow() {
     this.dirty = false;
+    this.renderScheduled = false;
     const convLines = this.getConversationLines();
     const convAvail = Math.max(1, this.height - 4); // leave 2 for status, 2 for input
     const maxScroll = Math.max(0, convLines.length - convAvail);
