@@ -290,108 +290,118 @@ export class Tui {
 
   // ─── Input ──────────────────────────────────────────
 
-  private escapeBuf = ""; // buffer for partial escape sequences
+  private escapeBytes: number[] = [];
 
   async readInput(): Promise<string | null> {
     this.inputBuf = "";
     this.inputCursor = 0;
-    this.escapeBuf = "";
+    this.escapeBytes = [];
     this.render();
 
     const buf = new Uint8Array(64);
     while (true) {
       const n = await Deno.stdin.read(buf);
       if (n === null) return null;
-      let seq = this.escapeBuf + new TextDecoder().decode(buf.subarray(0, n));
-      this.escapeBuf = "";
 
-      // Buffer incomplete escape sequences
-      if (seq.startsWith("\x1b") && seq.length < 3 && !seq.endsWith("\x1b")) {
-        // Might be partial: wait for more
-        this.escapeBuf = seq;
-        continue;
-      }
-      // If we have ESC followed by not enough bytes, buffer
-      if (seq.includes("\x1b") && seq.indexOf("\x1b") === seq.length - 1) {
-        this.escapeBuf = "\x1b";
-        seq = seq.substring(0, seq.length - 1);
-      }
+      for (let j = 0; j < n; j++) {
+        const b = buf[j];
 
-      // Process all complete escape sequences and characters
-      let i = 0;
-      while (i < seq.length) {
-        const ch = seq.charCodeAt(i);
-        const rest = seq.substring(i);
+        // If we're collecting an escape sequence
+        if (this.escapeBytes.length > 0) {
+          this.escapeBytes.push(b);
+          const s = new TextDecoder().decode(new Uint8Array(this.escapeBytes));
 
-        // Full escape sequence
-        if (rest.startsWith("\x1b[A") || rest.startsWith("\x1bOA")) { i += 3; this.scrollOffset = Math.max(0, this.scrollOffset - 1); this.render(); continue; }
-        if (rest.startsWith("\x1b[B") || rest.startsWith("\x1bOB")) { i += 3; const cl = this.getConversationLines(); this.scrollOffset = Math.min(Math.max(0, cl.length - (this.height - 4)), this.scrollOffset + 1); this.render(); continue; }
-        if (rest.startsWith("\x1b[C") || rest.startsWith("\x1bOC")) { i += 3; if (this.inputCursor < this.inputBuf.length) this.inputCursor++; this.render(); continue; }
-        if (rest.startsWith("\x1b[D") || rest.startsWith("\x1bOD")) { i += 3; if (this.inputCursor > 0) this.inputCursor--; this.render(); continue; }
-        if (rest.startsWith("\x1b[5~")) { i += 4; this.scrollOffset = Math.max(0, this.scrollOffset - 10); this.render(); continue; }
-        if (rest.startsWith("\x1b[6~")) { i += 4; const cl = this.getConversationLines(); this.scrollOffset = Math.min(Math.max(0, cl.length - (this.height - 4)), this.scrollOffset + 10); this.render(); continue; }
-        if (rest.startsWith("\x1b[H")) { i += 3; this.scrollOffset = 0; this.render(); continue; } // Home = top of convo
+          // Check if we have a complete known sequence
+          const known = [
+            "\x1b[A", "\x1b[B", "\x1b[C", "\x1b[D",
+            "\x1bOA", "\x1bOB", "\x1bOC", "\x1bOD",
+            "\x1b[5~", "\x1b[6~", "\x1b[H", "\x1b[F",
+            "\x1b[1~", "\x1b[4~", "\x1b[3~",
+          ];
+          const match = known.find(k => k === s);
+          if (match) {
+            // Process the sequence
+            if (match === "\x1b[A" || match === "\x1bOA") this.scrollOffset = Math.max(0, this.scrollOffset - 1);
+            else if (match === "\x1b[B" || match === "\x1bOB") { const cl = this.getConversationLines(); this.scrollOffset = Math.min(Math.max(0, cl.length - (this.height - 4)), this.scrollOffset + 1); }
+            else if (match === "\x1b[C" || match === "\x1bOC") { if (this.inputCursor < this.inputBuf.length) this.inputCursor++; }
+            else if (match === "\x1b[D" || match === "\x1bOD") { if (this.inputCursor > 0) this.inputCursor--; }
+            else if (match === "\x1b[5~") this.scrollOffset = Math.max(0, this.scrollOffset - 10);
+            else if (match === "\x1b[6~") { const cl = this.getConversationLines(); this.scrollOffset = Math.min(Math.max(0, cl.length - (this.height - 4)), this.scrollOffset + 10); }
+            else if (match === "\x1b[H") this.scrollOffset = 0;
+            this.escapeBytes = [];
+            this.render();
+            continue;
+          }
 
-        // Lone ESC (cancel)
-        if (ch === 27 && rest.length === 1) {
-          if (this.running) { this.aborted = true; this.statusExtra = "(aborting...)"; this.render(); }
-          i++; continue;
+          // Check if it's a complete but unknown ESC sequence (length >= 3, starts with ESC [)
+          if (this.escapeBytes.length >= 3 && s.startsWith("\x1b[")) {
+            // Unknown but complete - discard it
+            this.escapeBytes = [];
+            continue;
+          }
+
+          // If we've buffered too many bytes, give up
+          if (this.escapeBytes.length >= 6) {
+            this.escapeBytes = [];
+            continue;
+          }
+          // Otherwise keep buffering
+          continue;
         }
-        // Unknown ESC sequence - consume ESC but not following chars
-        if (ch === 27 && rest.length > 1 && rest[1] !== "[") {
-          i++; continue; // just consume the ESC
+
+        // Start of escape sequence
+        if (b === 27) {
+          this.escapeBytes = [27];
+          continue;
         }
 
-        // Special keys
-        if (ch === 24) { // Ctrl+X = submit
+        // Regular key handling
+        if (b === 24) { // Ctrl+X
           return this.inputBuf.trim() || null;
         }
-        if (ch === 10) { // Ctrl+J/Ctrl+Enter = submit
+        if (b === 10) { // Ctrl+J
           return this.inputBuf.trim() || null;
         }
-        if (ch === 13) { // Enter = newline
+        if (b === 13) { // Enter
           this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + "\n" + this.inputBuf.substring(this.inputCursor);
           this.inputCursor++;
           this.render();
-          i++; continue;
+          continue;
         }
-        if (ch === 127 || ch === 8) { // Backspace
+        if (b === 127 || b === 8) { // Backspace
           if (this.inputCursor > 0) {
             this.inputBuf = this.inputBuf.substring(0, this.inputCursor - 1) + this.inputBuf.substring(this.inputCursor);
             this.inputCursor--;
             this.render();
           }
-          i++; continue;
+          continue;
         }
-        if (ch === 9) { // Tab = autocomplete
+        if (b === 9) { // Tab
           this.doAutoComplete();
           this.render();
-          i++; continue;
+          continue;
         }
-        if (ch === 23) { // Ctrl+W = delete word
+        if (b === 23) { // Ctrl+W
           const before = this.inputBuf.substring(0, this.inputCursor);
           const after = this.inputBuf.substring(this.inputCursor);
           const m = before.match(/(.*\s+)?(\S*)$/);
           if (m) { const keep = m[1] ?? ""; this.inputBuf = keep + after; this.inputCursor = keep.length; }
           this.render();
-          i++; continue;
+          continue;
         }
-        if (ch === 21) { // Ctrl+U = delete to start
+        if (b === 21) { // Ctrl+U
           this.inputBuf = this.inputBuf.substring(this.inputCursor);
           this.inputCursor = 0;
           this.render();
-          i++; continue;
+          continue;
         }
-
-        // Printable
-        if (ch >= 32) {
-          const char = rest[0];
+        if (b >= 32 && b < 127) { // Printable ASCII
+          const char = String.fromCharCode(b);
           this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + char + this.inputBuf.substring(this.inputCursor);
           this.inputCursor++;
           this.render();
-          i++; continue;
+          continue;
         }
-        i++; // skip unknown
       }
     }
   }
