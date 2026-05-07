@@ -242,6 +242,8 @@ export class Tui {
   private spinnerFrame = 0;
   private spinnerInterval: number | null = null;
   private spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  private dirty = true;
+  private renderScheduled = false;
 
   constructor() {}
 
