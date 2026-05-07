@@ -1,0 +1,8 @@
+# ─── Gn01Cms Runtime Container (pre-built publish output) ──
+FROM docker.io/library/dotnet:10.0-aspnet
+WORKDIR /app
+COPY . /app
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV CMS_ADMIN_PASSWORD=gn01cms
+EXPOSE 5000
+ENTRYPOINT ["dotnet", "Gn01Cms.Web.dll"]
