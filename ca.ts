@@ -203,22 +203,38 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   let stdinBuffer = "";
-  const history: string[] = [];
-  const rl = new Readline(500);
 
-  // Simple buffered readline with optional raw-mode for history
   async function readLine(promptStr: string): Promise<string | null> {
-    if (!Deno.stdin.isTerminal()) {
-      // Non-TTY fallback
-      const buf = new Uint8Array(4096);
-      const n = await Deno.stdin.read(buf);
-      if (n === null) return null;
-      const line = decoder.decode(buf.subarray(0, n));
-      return line.replace(/\r?\n$/, "");
+    const nlIndex = stdinBuffer.indexOf("\n");
+    if (nlIndex !== -1) {
+      const line = stdinBuffer.substring(0, nlIndex);
+      stdinBuffer = stdinBuffer.substring(nlIndex + 1);
+      return line.replace(/\r$/, "");
     }
 
-    // Try raw mode for history navigation
-    return rl.readLineSimple(promptStr, history);
+    await Deno.stdout.write(encoder.encode(promptStr));
+
+    const buf = new Uint8Array(4096);
+    while (true) {
+      const n = await Deno.stdin.read(buf);
+      if (n === null) {
+        if (stdinBuffer.length > 0) {
+          const line = stdinBuffer;
+          stdinBuffer = "";
+          return line;
+        }
+        return null;
+      }
+
+      stdinBuffer += decoder.decode(buf.subarray(0, n));
+
+      const nlIdx = stdinBuffer.indexOf("\n");
+      if (nlIdx !== -1) {
+        const line = stdinBuffer.substring(0, nlIdx);
+        stdinBuffer = stdinBuffer.substring(nlIdx + 1);
+        return line.replace(/\r$/, "");
+      }
+    }
   }
 
   // askUser callback for interactive mode
