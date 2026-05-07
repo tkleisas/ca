@@ -295,7 +295,7 @@ export class Tui {
       this.spinnerFrame = 0;
       this.spinnerInterval = setInterval(() => {
         this.spinnerFrame = (this.spinnerFrame + 1) % this.spinnerChars.length;
-        this.renderNow();
+        this.render();
       }, 80);
     } else {
       if (this.spinnerInterval) { clearInterval(this.spinnerInterval); this.spinnerInterval = null; }
