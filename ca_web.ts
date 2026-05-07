@@ -495,10 +495,14 @@ function handleEvent(ev) {
     case "session_switched":
       // Clear messages and show loaded session
       document.getElementById("messages").innerHTML = "";
-      const summary = ev.messages && ev.messages.length > 0
-        ? \`Loaded \${ev.messages.length} messages from session \${ev.id}\`
-        : \`New session \${ev.id}\`;
-      addWarning(summary);
+      if (ev.messages && ev.messages.length > 0) {
+        for (const m of ev.messages) {
+          addMessage(m.role, m.content ?? "");
+        }
+        addWarning(\`Loaded \${ev.messages.length} messages from session \${ev.id}\`);
+      } else {
+        addWarning(\`New session \${ev.id}\`);
+      }
       break;
   }
   scrollDown();
