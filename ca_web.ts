@@ -73,7 +73,7 @@ export async function runWebAgent(
 
   msgs.push({ role: "user", content: prompt });
 
-  let totalTokens = estimateMessagesTokens(msgs);
+  let totalApiTokens = 0; // actual tokens from API responses
 
   for (let round = 1; round <= config.maxRounds; round++) {
     if (signal?.aborted) {
@@ -87,6 +87,7 @@ export async function runWebAgent(
       used: estTokens,
       max: config.maxTokens,
       pct: ((estTokens / config.maxTokens) * 100).toFixed(1),
+      apiUsed: totalApiTokens,
     });
     if (estTokens > config.maxTokens * 0.85) {
       onEvent({
