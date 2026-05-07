@@ -314,7 +314,7 @@ Deno.test("buildSystemContent - returns string with context", async () => {
   const result = await buildSystemContent(config, Deno.cwd());
   assert(typeof result === "string");
   assert(result.length > 0);
-  assertStringIncludes(result, "CA 0.2.2");
+  assertStringIncludes(result, `CA ${VERSION}`);
   assertStringIncludes(result, "Working directory:");
 });
 
