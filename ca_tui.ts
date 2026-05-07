@@ -579,8 +579,9 @@ export class Tui {
       inputRendered,
     ].join("\n");
 
+    // Move cursor to top-left and redraw (avoids full clear flicker)
     Deno.stdout.writeSync(this.encoder.encode(
-      esc("H") + esc("2J") + out
+      esc("H") + out + esc("J")
     ));
   }
 }
