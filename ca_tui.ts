@@ -287,6 +287,16 @@ export class Tui {
   setRunning(v: boolean) {
     this.running = v;
     this.aborted = false;
+    if (v) {
+      this.spinnerFrame = 0;
+      this.spinnerInterval = setInterval(() => {
+        this.spinnerFrame = (this.spinnerFrame + 1) % this.spinnerChars.length;
+        this.render();
+      }, 80);
+    } else {
+      if (this.spinnerInterval) { clearInterval(this.spinnerInterval); this.spinnerInterval = null; }
+      this.render();
+    }
   }
 
   getAborted(): boolean { return this.aborted; }
