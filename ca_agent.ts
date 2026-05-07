@@ -195,7 +195,10 @@ export async function run(
       break;
     }
 
-    spinner.start(`Round ${round}/${config.maxRounds} — ${config.model}`);
+    const roundStart = Date.now();
+    spinner.start(round === 1
+      ? `Round ${round}/${config.maxRounds} — ${config.model}`
+      : `Round ${round}/${config.maxRounds}`);
 
     let response: ChatMessage;
     let usage;
