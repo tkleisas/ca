@@ -274,6 +274,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
             } catch { /* non-critical */ }
           }
           console.error(colorize("Goodbye!", C.green));
+          rl.restore();
           return;
 
         case "/help":
