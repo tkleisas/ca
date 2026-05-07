@@ -13,7 +13,7 @@ export type WebEvent =
   | { type: "context"; content: string }
   | { type: "thinking"; round: number; maxRounds: number }
   | { type: "token_warning"; used: number; max: number; pct: string }
-  | { type: "token_update"; used: number; max: number; pct: string }
+  | { type: "token_update"; used: number; max: number; pct: string; apiUsed?: number }
   | { type: "assistant_text"; content: string }
   | { type: "tool_call"; id: string; name: string; args: Record<string, unknown> }
   | { type: "tool_result"; id: string; name: string; result: string; error: boolean; diff?: string }
