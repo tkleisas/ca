@@ -317,8 +317,28 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
           continue;
         }
 
+        case "/new": {
+          // Save current session, then start fresh
+          if (currentSessionId && messages.length > 1) {
+            try {
+              await saveSession(cwd, currentSessionId, messages, config.model);
+            } catch { /* non-critical */ }
+          }
+          currentSessionId = await createSession(cwd, config.model);
+          messages = [{ role: "system", content: systemContent }];
+          console.error(colorize("New session created.", C.green));
+          continue;
+        }
+
         case "/quit":
         case "/exit":
+          // Autosave before exit
+          if (currentSessionId && messages.length > 1) {
+            try {
+              await saveSession(cwd, currentSessionId, messages, config.model);
+              console.error(colorize("Session saved.", C.green));
+            } catch { /* non-critical */ }
+          }
           console.error(colorize("Goodbye!", C.green));
           return;
 
