@@ -616,7 +616,7 @@ export class Tui {
     for (let i = 0; i < padLines; i++) padding.push("~".repeat(Math.min(this.width, 40)));
 
     // Status line
-    const runningIndicator = this.running ? " ⠋" : "";
+    const runningIndicator = this.running ? ` ${this.spinnerChars[this.spinnerFrame]}` : "";
     const extraStr = this.statusExtra ? ` ${this.statusExtra}` : "";
     const statusLeft = `${this.statusModel}${runningIndicator} │ ~${this.statusCtx} │ ${this.statusDir}${this.statusGit ? " │ " + this.statusGit : ""}`;
     const statusRight = extraStr || (this.running ? "Ctrl+C to cancel" : "Ctrl+X send  ↑↓ scroll  /commands");
