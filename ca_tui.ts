@@ -33,6 +33,8 @@ export interface TuiEvent {
   diff?: string;
   usage?: UsageInfo;
   message?: string;
+  messages?: ChatMessage[];
+  needsRestart?: boolean;
 }
 
 export interface TuiRunResult {
