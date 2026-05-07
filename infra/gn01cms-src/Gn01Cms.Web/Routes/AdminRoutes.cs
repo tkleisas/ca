@@ -394,6 +394,26 @@ public static class AdminRoutes
             return Results.Content(await page.RenderAsync(contentType, item), "text/html");
         });
 
+        app.MapPost("/admin/content/{id:int}/delete", async (int id, ICurrentUser currentUser, IContentService contentService) =>
+        {
+            if (!currentUser.IsAuthenticated)
+                return Results.Redirect("/admin/login");
+
+            try
+            {
+                var item = await contentService.GetAsync(id);
+                var typeId = item?.TypeId;
+                await contentService.DeleteAsync(id);
+                var redirect = typeId.HasValue ? $"/admin/content?type={typeId}" : "/admin/content";
+                return Results.Redirect(redirect);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to delete content {Id}", id);
+                return Results.Redirect("/admin/content");
+            }
+        });
+
         app.MapPost("/admin/content/{id:int}", async (int id, HttpContext ctx, ContentEditPage page, ICurrentUser currentUser, IContentService contentService, IContentTypeService typeService) =>
         {
             if (!currentUser.IsAuthenticated)
