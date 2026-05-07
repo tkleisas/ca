@@ -239,6 +239,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monos
 #send-btn { padding: 8px 18px; background: #238636; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; white-space: nowrap; }
 #send-btn:hover { background: #2ea043; }
 #send-btn:disabled { background: #30363d; cursor: not-allowed; }
+#abort-btn { padding: 8px 18px; background: #da3633; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; white-space: nowrap; display: none; }
+#abort-btn:hover { background: #f85149; }
+#abort-btn.visible { display: inline-block; }
 
 .msg { margin-bottom: 16px; animation: fadeIn 0.2s; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
