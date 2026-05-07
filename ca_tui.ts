@@ -351,6 +351,7 @@ export class Tui {
           continue;
         }
 
+        if (b === 3) { this.inputBuf = ""; this.inputCursor = 0; this.render(); continue; } // Ctrl+C = clear input
         if (b === 27) { this.escapeBytes = [27]; continue; }
         if (b === 24) return this.inputBuf.trim() || null;
         if (b === 10) return this.inputBuf.trim() || null;

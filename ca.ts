@@ -267,11 +267,24 @@ async function interactiveTui(existingMessages?: ChatMessage[]): Promise<void> {
       abortController = new AbortController();
       tui.setRunning(true);
       tui.addMessage({ role: "user", content: input });
-      // Input cleared by addMessage's rebuild
+
+      // Background stdin watcher: Ctrl+C (byte 3) aborts the agent
+      const abortPromise = (async () => {
+        const buf = new Uint8Array(1);
+        while (true) {
+          const n = await Deno.stdin.read(buf);
+          if (n === null) break;
+          if (buf[0] === 3) { // Ctrl+C
+            abortController.abort();
+            tui.addWarning("Interrupted — you can correct your request.");
+            tui.setRunning(false);
+            return;
+          }
+        }
+      })();
 
       try {
         const stream = runAgentStream(input, messages, config, abortController.signal);
-        let lastResult: { messages: ChatMessage[]; needsRestart: boolean } | null = null;
 
         for await (const event of stream) {
           if (tui.getAborted()) {
