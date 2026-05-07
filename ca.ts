@@ -139,7 +139,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
   // Build initial system prompt
   const systemContent = await buildSystemContent(config, cwd);
 
-  let messages: ChatMessage[];
+  let messages: ChatMessage[] = [{ role: "system", content: systemContent }];
   let currentSessionId: string | null = null;
 
   if (existingMessages) {
@@ -194,9 +194,7 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
     if (!loaded) {
       // Fresh start — create session
       currentSessionId = await createSession(cwd, config.model);
-      messages = [
-        { role: "system", content: systemContent },
-      ];
+      // messages already initialized with fresh system prompt above
     }
   }
 
