@@ -119,7 +119,7 @@ export async function* runAgentStream(
       return { messages: msgs, needsRestart: false };
     }
 
-    response = { role: "assistant", content: accum.content || null };
+    response = { role: "assistant", content: accum.content || undefined } as ChatMessage;
     if (accum.reasoning) response.reasoning_content = accum.reasoning;
 
     const toolCallsArr = [...accum.toolCalls.values()].filter((tc) => tc.id);
