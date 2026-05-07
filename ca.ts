@@ -134,21 +134,70 @@ ${b("Examples:")}
 
 async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
   const config = getConfig();
+  const cwd = Deno.cwd();
 
   // Build initial system prompt
-  const systemContent = await buildSystemContent(config, Deno.cwd());
+  const systemContent = await buildSystemContent(config, cwd);
 
   let messages: ChatMessage[];
+  let currentSessionId: string | null = null;
+
   if (existingMessages) {
     messages = existingMessages;
     // Update system prompt with current config
     if (messages[0]?.role === "system") {
       messages[0].content = systemContent;
     }
+    // Auto-create session for loaded messages
+    try {
+      currentSessionId = await createSession(cwd, config.model);
+      await saveSession(cwd, currentSessionId, messages, config.model);
+    } catch { /* non-critical */ }
   } else {
-    messages = [
-      { role: "system", content: systemContent },
-    ];
+    // Autoload last session
+    let loaded = false;
+    try {
+      const sessions = await listSessions(cwd);
+      if (sessions.length > 0) {
+        const lastSession = sessions[0]; // sorted by most recent first
+        const loadedMsgs = await loadSession(cwd, lastSession.id);
+        if (loadedMsgs.length > 0) {
+          messages = loadedMsgs;
+          if (messages[0]?.role === "system") {
+            messages[0].content = systemContent;
+          }
+          currentSessionId = lastSession.id;
+          loaded = true;
+          console.error(colorize("📂 Session auto-loaded.", C.green));
+        }
+      }
+    } catch { /* fall through to fresh start */ }
+
+    if (!loaded) {
+      // Try legacy resume file as fallback
+      try {
+        const resumeFile = `${cwd}/.ca_resume.json`;
+        const resumeMsgs = await loadConversation(resumeFile);
+        if (resumeMsgs.length > 0) {
+          messages = resumeMsgs;
+          if (messages[0]?.role === "system") {
+            messages[0].content = systemContent;
+          }
+          currentSessionId = await createSession(cwd, config.model);
+          await saveSession(cwd, currentSessionId, messages, config.model);
+          loaded = true;
+          console.error(colorize("📂 Resumed from previous session.", C.green));
+        }
+      } catch { /* no legacy resume either */ }
+    }
+
+    if (!loaded) {
+      // Fresh start — create session
+      currentSessionId = await createSession(cwd, config.model);
+      messages = [
+        { role: "system", content: systemContent },
+      ];
+    }
   }
 
   printBanner(config);
