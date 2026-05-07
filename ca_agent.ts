@@ -213,6 +213,13 @@ export async function run(
 
     msgs.push(response);
 
+    // Show detailed usage for this round
+    if (usage) {
+      console.error(
+        dim(`  [API: ${usage.promptTokens.toLocaleString()} in + ${usage.completionTokens.toLocaleString()} out = ${usage.totalTokens.toLocaleString()} total | session: ${totalApiTokens.toLocaleString()}]`),
+      );
+    }
+
     if (response.tool_calls?.length) {
       spinner.stop();
 
