@@ -1187,7 +1187,12 @@ function sendMessage() {
   ws.send(JSON.stringify({ type: "user_message", content: text }));
 }
 
+function abortAgent() {
+  ws.send(JSON.stringify({ type: "abort" }));
+}
+
 document.getElementById("send-btn").addEventListener("click", sendMessage);
+document.getElementById("abort-btn").addEventListener("click", abortAgent);
 document.getElementById("input").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
