@@ -290,112 +290,162 @@ export class Tui {
 
   // ─── Input ──────────────────────────────────────────
 
+  private escapeBuf = ""; // buffer for partial escape sequences
+
   async readInput(): Promise<string | null> {
     this.inputBuf = "";
     this.inputCursor = 0;
+    this.escapeBuf = "";
     this.render();
 
     const buf = new Uint8Array(64);
     while (true) {
       const n = await Deno.stdin.read(buf);
       if (n === null) return null;
-      const seq = buf.subarray(0, n);
+      let seq = this.escapeBuf + new TextDecoder().decode(buf.subarray(0, n));
+      this.escapeBuf = "";
 
-      // Ctrl+Enter (10 = LF, check for LF after CR or standalone)
-      // We use Ctrl+J (10) as the submit key since raw mode gives us that
-      if (n === 1 && seq[0] === 10) {
-        // Ctrl+Enter typically sends LF. In raw mode, Enter = CR.
-        // We use regular Enter (13) for newline, Ctrl+J (10) for submit.
-        // But some terminals send LF for Enter in raw mode...
-        // Let's use Ctrl+X (24) as submit key for reliability.
-        const line = this.inputBuf.trim();
-        return line || null;
-      }
-
-      // Ctrl+Enter alternative: many terminals send \n
-      // Check for Ctrl+Enter: hold Ctrl, press Enter → typically sends LF
-      // We'll use Ctrl+X (24) as explicit submit
-      if (n === 1 && seq[0] === 24) { // Ctrl+X = submit
-        return this.inputBuf.trim() || null;
-      }
-
-      // ESC = cancel input if running, otherwise do nothing
-      if (n === 1 && seq[0] === 27) {
-        if (this.running) {
-          this.aborted = true;
-          this.statusExtra = "(aborting...)";
-          this.render();
-        }
+      // Buffer incomplete escape sequences
+      if (seq.startsWith("\x1b") && seq.length < 3 && !seq.endsWith("\x1b")) {
+        // Might be partial: wait for more
+        this.escapeBuf = seq;
         continue;
       }
-
-      // Enter (CR = 13)
-      if (n === 1 && seq[0] === 13) {
-        this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + "\n" + this.inputBuf.substring(this.inputCursor);
-        this.inputCursor++;
-        this.render();
-        continue;
+      // If we have ESC followed by not enough bytes, buffer
+      if (seq.includes("\x1b") && seq.indexOf("\x1b") === seq.length - 1) {
+        this.escapeBuf = "\x1b";
+        seq = seq.substring(0, seq.length - 1);
       }
 
-      // Backspace
-      if (n === 1 && (seq[0] === 127 || seq[0] === 8)) {
-        if (this.inputCursor > 0) {
-          this.inputBuf = this.inputBuf.substring(0, this.inputCursor - 1) + this.inputBuf.substring(this.inputCursor);
-          this.inputCursor--;
-          this.render();
-        }
-        continue;
-      }
+      // Process all complete escape sequences and characters
+      let i = 0;
+      while (i < seq.length) {
+        const ch = seq.charCodeAt(i);
+        const rest = seq.substring(i);
 
-      // Arrow keys
-      if (seq[0] === 27 && n >= 3) {
-        const s = new TextDecoder().decode(seq);
-        if (s === "\x1b[A") { // Up
-          // Scroll conversation up
-          this.scrollOffset = Math.max(0, this.scrollOffset - 1);
-          this.render();
-          continue;
+        // Full escape sequence
+        if (rest.startsWith("\x1b[A") || rest.startsWith("\x1bOA")) { i += 3; this.scrollOffset = Math.max(0, this.scrollOffset - 1); this.render(); continue; }
+        if (rest.startsWith("\x1b[B") || rest.startsWith("\x1bOB")) { i += 3; const cl = this.getConversationLines(); this.scrollOffset = Math.min(Math.max(0, cl.length - (this.height - 4)), this.scrollOffset + 1); this.render(); continue; }
+        if (rest.startsWith("\x1b[C") || rest.startsWith("\x1bOC")) { i += 3; if (this.inputCursor < this.inputBuf.length) this.inputCursor++; this.render(); continue; }
+        if (rest.startsWith("\x1b[D") || rest.startsWith("\x1bOD")) { i += 3; if (this.inputCursor > 0) this.inputCursor--; this.render(); continue; }
+        if (rest.startsWith("\x1b[5~")) { i += 4; this.scrollOffset = Math.max(0, this.scrollOffset - 10); this.render(); continue; }
+        if (rest.startsWith("\x1b[6~")) { i += 4; const cl = this.getConversationLines(); this.scrollOffset = Math.min(Math.max(0, cl.length - (this.height - 4)), this.scrollOffset + 10); this.render(); continue; }
+        if (rest.startsWith("\x1b[H")) { i += 3; this.scrollOffset = 0; this.render(); continue; } // Home = top of convo
+
+        // Lone ESC (cancel)
+        if (ch === 27 && rest.length === 1) {
+          if (this.running) { this.aborted = true; this.statusExtra = "(aborting...)"; this.render(); }
+          i++; continue;
         }
-        if (s === "\x1b[B") { // Down
-          const convLines = this.getConversationLines();
-          const maxScroll = Math.max(0, convLines.length - (this.height - 4));
-          this.scrollOffset = Math.min(maxScroll, this.scrollOffset + 1);
-          this.render();
-          continue;
+        // Unknown ESC sequence - consume ESC but not following chars
+        if (ch === 27 && rest.length > 1 && rest[1] !== "[") {
+          i++; continue; // just consume the ESC
         }
-        if (s === "\x1b[C" && this.inputCursor < this.inputBuf.length) { // Right
+
+        // Special keys
+        if (ch === 24) { // Ctrl+X = submit
+          return this.inputBuf.trim() || null;
+        }
+        if (ch === 10) { // Ctrl+J/Ctrl+Enter = submit
+          return this.inputBuf.trim() || null;
+        }
+        if (ch === 13) { // Enter = newline
+          this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + "\n" + this.inputBuf.substring(this.inputCursor);
           this.inputCursor++;
           this.render();
-          continue;
+          i++; continue;
         }
-        if (s === "\x1b[D" && this.inputCursor > 0) { // Left
-          this.inputCursor--;
+        if (ch === 127 || ch === 8) { // Backspace
+          if (this.inputCursor > 0) {
+            this.inputBuf = this.inputBuf.substring(0, this.inputCursor - 1) + this.inputBuf.substring(this.inputCursor);
+            this.inputCursor--;
+            this.render();
+          }
+          i++; continue;
+        }
+        if (ch === 9) { // Tab = autocomplete
+          this.doAutoComplete();
           this.render();
-          continue;
+          i++; continue;
         }
-        // PgUp / PgDn
-        if (s === "\x1b[5~") {
-          this.scrollOffset = Math.max(0, this.scrollOffset - 10);
+        if (ch === 23) { // Ctrl+W = delete word
+          const before = this.inputBuf.substring(0, this.inputCursor);
+          const after = this.inputBuf.substring(this.inputCursor);
+          const m = before.match(/(.*\s+)?(\S*)$/);
+          if (m) { const keep = m[1] ?? ""; this.inputBuf = keep + after; this.inputCursor = keep.length; }
           this.render();
-          continue;
+          i++; continue;
         }
-        if (s === "\x1b[6~") {
-          const convLines = this.getConversationLines();
-          const maxScroll = Math.max(0, convLines.length - (this.height - 4));
-          this.scrollOffset = Math.min(maxScroll, this.scrollOffset + 10);
+        if (ch === 21) { // Ctrl+U = delete to start
+          this.inputBuf = this.inputBuf.substring(this.inputCursor);
+          this.inputCursor = 0;
           this.render();
-          continue;
+          i++; continue;
         }
-        continue;
-      }
 
-      // Printable
-      const s = new TextDecoder().decode(seq);
-      if (s.length >= 1 && s.charCodeAt(0) >= 32) {
-        this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + s + this.inputBuf.substring(this.inputCursor);
-        this.inputCursor += s.length;
-        this.render();
+        // Printable
+        if (ch >= 32) {
+          const char = rest[0];
+          this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + char + this.inputBuf.substring(this.inputCursor);
+          this.inputCursor++;
+          this.render();
+          i++; continue;
+        }
+        i++; // skip unknown
       }
+    }
+  }
+
+  private doAutoComplete() {
+    const beforeCursor = this.inputBuf.substring(0, this.inputCursor);
+    // Command completion
+    if (beforeCursor.startsWith("/")) {
+      const commands = [
+        "/help", "/quit", "/exit", "/new", "/clear", "/tokens", "/model",
+        "/history", "/system", "/context", "/save", "/load", "/edit", "/set",
+        "/upgrade", "/upgrade-go",
+      ];
+      const partial = beforeCursor.toLowerCase();
+      const matches = commands.filter(c => c.startsWith(partial));
+      if (matches.length === 1) {
+        this.inputBuf = matches[0] + this.inputBuf.substring(this.inputCursor);
+        this.inputCursor = matches[0].length;
+      } else if (matches.length > 1) {
+        // Show common prefix
+        let common = matches[0];
+        for (const m of matches) {
+          let j = 0;
+          while (j < common.length && j < m.length && common[j] === m[j]) j++;
+          common = common.substring(0, j);
+        }
+        if (common.length > partial.length) {
+          this.inputBuf = common + this.inputBuf.substring(this.inputCursor);
+          this.inputCursor = common.length;
+        }
+      }
+      return;
+    }
+    // File path completion (# prefix)
+    const fileMatch = beforeCursor.match(/(^|.*\s)#(\S*)$/);
+    if (fileMatch) {
+      // Basic: don't do async file lookups in the UI thread
+      // Just expand # to current directory for now
+      if (fileMatch[2] === "") {
+        try {
+          const entries: string[] = [];
+          for (const entry of Deno.readDirSync(".")) {
+            if (!entry.name.startsWith(".")) {
+              entries.push(entry.name + (entry.isDirectory ? "/" : ""));
+            }
+          }
+          if (entries.length === 1) {
+            const prefix = fileMatch[1];
+            this.inputBuf = prefix + "#" + entries[0] + this.inputBuf.substring(this.inputCursor);
+            this.inputCursor = (prefix + "#" + entries[0]).length;
+          }
+        } catch { /* ok */ }
+      }
+      return;
     }
   }
 
