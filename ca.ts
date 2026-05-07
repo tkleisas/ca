@@ -200,83 +200,17 @@ async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
 
   printBanner(config);
 
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
-  let stdinBuffer = "";
-
-  async function readLine(promptStr: string): Promise<string | null> {
-    const nlIndex = stdinBuffer.indexOf("\n");
-    if (nlIndex !== -1) {
-      const line = stdinBuffer.substring(0, nlIndex);
-      stdinBuffer = stdinBuffer.substring(nlIndex + 1);
-      return line.replace(/\r$/, "");
-    }
-
-    await Deno.stdout.write(encoder.encode(promptStr));
-
-    const buf = new Uint8Array(4096);
-    while (true) {
-      const n = await Deno.stdin.read(buf);
-      if (n === null) {
-        if (stdinBuffer.length > 0) {
-          const line = stdinBuffer;
-          stdinBuffer = "";
-          return line;
-        }
-        return null;
-      }
-
-      stdinBuffer += decoder.decode(buf.subarray(0, n));
-
-      const nlIdx = stdinBuffer.indexOf("\n");
-      if (nlIdx !== -1) {
-        const line = stdinBuffer.substring(0, nlIdx);
-        stdinBuffer = stdinBuffer.substring(nlIdx + 1);
-        return line.replace(/\r$/, "");
-      }
-    }
-  }
+  const rl = new Readline(500);
 
   // askUser callback for interactive mode
   async function askUserCallback(question: string): Promise<string> {
     console.error(`\n${colorize("💬", C.cyan)} ${bold("Agent asks:")} ${question}`);
-    const answer = await readLine(`${colorize("❯❯ ", C.cyan)}`);
+    const answer = await rl.readLine(`${colorize("❯❯ ", C.cyan)}`);
     return answer?.trim() ?? "";
   }
 
-  // Multi-line input support
-  async function readMultiLine(): Promise<string | null> {
-    const lines: string[] = [];
-    let firstLine = true;
-
-    while (true) {
-      const promptStr = firstLine
-        ? colorize("❯ ", C.cyan)
-        : colorize("│ ", dim(""));
-
-      const line = await readLine(promptStr);
-      firstLine = false;
-
-      if (line === null) {
-        // EOF
-        return lines.length > 0 ? lines.join("\n") : null;
-      }
-
-      // Empty line on first prompt = skip
-      if (lines.length === 0 && line.trim() === "") {
-        return "";
-      }
-
-      // Check for termination: \e on its own line (backslash + 'e')
-      if (line.trim() === "\\e") {
-        return lines.join("\n");
-      }
-
-      lines.push(line);
-    }
-  }
-
-  console.error(dim("Type \\e on a new line to submit multi-line input. /help for commands."));
+  console.error(dim("Enter to send. \\ at end of line to continue. /help for commands."));
+  console.error(dim("Up/Down for history. Ctrl+D to exit."));
   console.error("");
 
   while (true) {
