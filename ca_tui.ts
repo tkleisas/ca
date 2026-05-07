@@ -133,17 +133,15 @@ export async function* runAgentStream(
 
     // Execute tools
     if (response.tool_calls?.length) {
-      const toolResults = await Promise.all(
-        response.tool_calls.map(async (tc) => {
-          const name = tc.function.name;
-          let args: Record<string, unknown> = {};
-          try { args = JSON.parse(tc.function.arguments); } catch {
-            yield { type: "tool_error", toolId: tc.id, toolName: name, message: "Invalid JSON arguments" };
-            return { tc, result: `Error: Invalid JSON` };
-          }
-
-          yield { type: "tool_call", toolId: tc.id, toolName: name, toolArgs: args, round };
-
+      // Phase 1: emit tool_call events and parse args
+      const toolTasks = response.tool_calls.map(async (tc) => {
+        const name = tc.function.name;
+        let args: Record<string, unknown> = {};
+        try { args = JSON.parse(tc.function.arguments); } catch {
+          return { tc, result: `Error: Invalid JSON`, error: true };
+        }
+        yield { type: "tool_call" as const, toolId: tc.id, toolName: name, toolArgs: args, round };
+        try {
           const result = await executeTool(name, args, {
             sandbox: config.sandbox,
             approve: config.approve,
@@ -152,12 +150,32 @@ export async function* runAgentStream(
             cwd: Deno.cwd(),
             askUser: undefined,
           });
+          return { tc, result: result.output, error: false, diff: result.diff };
+        } catch (e) {
+          return { tc, result: `Error: ${(e as Error).message}`, error: true };
+        }
+      });
 
-          const isError = result.output.startsWith("Error");
-          yield { type: "tool_result", toolId: tc.id, toolName: name, toolResult: result.output, toolError: isError, diff: result.diff, round };
-          return { tc, result: result.output };
-        }),
-      );
+      // Execute all in parallel, collecting results
+      const toolResults: Array<{ tc: ToolCall; result: string; error: boolean; diff?: string }> = [];
+      for (const task of toolTasks) {
+        toolResults.push(await task);
+      }
+
+      // Phase 2: emit results and add tool messages
+      for (const { tc, result, error, diff } of toolResults) {
+        const isError = error || result.startsWith("Error");
+        yield {
+          type: "tool_result" as const,
+          toolId: tc.id,
+          toolName: tc.function.name,
+          toolResult: result,
+          toolError: isError,
+          diff,
+          round,
+        };
+        msgs.push({ role: "tool", tool_call_id: tc.id, content: result });
+      }
 
       for (const { tc, result } of toolResults) {
         msgs.push({ role: "tool", tool_call_id: tc.id, content: result });
