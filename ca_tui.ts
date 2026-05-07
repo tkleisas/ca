@@ -312,7 +312,7 @@ export class Tui {
     this.inputBuf = "";
     this.inputCursor = 0;
     this.escapeBytes = [];
-    this.render();
+    this.renderNow();
 
     const buf = new Uint8Array(64);
     while (true) {
@@ -325,18 +325,16 @@ export class Tui {
         // If we're collecting an escape sequence
         if (this.escapeBytes.length > 0) {
           this.escapeBytes.push(b);
-          const s = new TextDecoder().decode(new Uint8Array(this.escapeBytes));
+          const arr = new Uint8Array(this.escapeBytes);
+          const s = new TextDecoder().decode(arr);
 
-          // Check if we have a complete known sequence
           const known = [
             "\x1b[A", "\x1b[B", "\x1b[C", "\x1b[D",
             "\x1bOA", "\x1bOB", "\x1bOC", "\x1bOD",
-            "\x1b[5~", "\x1b[6~", "\x1b[H", "\x1b[F",
-            "\x1b[1~", "\x1b[4~", "\x1b[3~",
+            "\x1b[5~", "\x1b[6~", "\x1b[H",
           ];
           const match = known.find(k => k === s);
           if (match) {
-            // Process the sequence
             if (match === "\x1b[A" || match === "\x1bOA") this.scrollOffset = Math.max(0, this.scrollOffset - 1);
             else if (match === "\x1b[B" || match === "\x1bOB") { const cl = this.getConversationLines(); this.scrollOffset = Math.min(Math.max(0, cl.length - (this.height - 4)), this.scrollOffset + 1); }
             else if (match === "\x1b[C" || match === "\x1bOC") { if (this.inputCursor < this.inputBuf.length) this.inputCursor++; }
@@ -345,80 +343,26 @@ export class Tui {
             else if (match === "\x1b[6~") { const cl = this.getConversationLines(); this.scrollOffset = Math.min(Math.max(0, cl.length - (this.height - 4)), this.scrollOffset + 10); }
             else if (match === "\x1b[H") this.scrollOffset = 0;
             this.escapeBytes = [];
-            this.render();
+            // No render from input handler — dirty flag + microtask handles it
             continue;
           }
-
-          // Check if it's a complete but unknown ESC sequence (length >= 3, starts with ESC [)
-          if (this.escapeBytes.length >= 3 && s.startsWith("\x1b[")) {
-            // Unknown but complete - discard it
-            this.escapeBytes = [];
-            continue;
-          }
-
-          // If we've buffered too many bytes, give up
-          if (this.escapeBytes.length >= 6) {
-            this.escapeBytes = [];
-            continue;
-          }
-          // Otherwise keep buffering
+          if (this.escapeBytes.length >= 3 && s.startsWith("\x1b[")) { this.escapeBytes = []; continue; }
+          if (this.escapeBytes.length >= 6) { this.escapeBytes = []; continue; }
           continue;
         }
 
-        // Start of escape sequence
-        if (b === 27) {
-          this.escapeBytes = [27];
-          continue;
-        }
-
-        // Regular key handling
-        if (b === 24) { // Ctrl+X
-          return this.inputBuf.trim() || null;
-        }
-        if (b === 10) { // Ctrl+J
-          return this.inputBuf.trim() || null;
-        }
-        if (b === 13) { // Enter
-          this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + "\n" + this.inputBuf.substring(this.inputCursor);
-          this.inputCursor++;
-          this.render();
-          continue;
-        }
-        if (b === 127 || b === 8) { // Backspace
-          if (this.inputCursor > 0) {
-            this.inputBuf = this.inputBuf.substring(0, this.inputCursor - 1) + this.inputBuf.substring(this.inputCursor);
-            this.inputCursor--;
-            this.render();
-          }
-          continue;
-        }
-        if (b === 9) { // Tab
-          this.doAutoComplete();
-          this.render();
-          continue;
-        }
-        if (b === 23) { // Ctrl+W
-          const before = this.inputBuf.substring(0, this.inputCursor);
-          const after = this.inputBuf.substring(this.inputCursor);
-          const m = before.match(/(.*\s+)?(\S*)$/);
-          if (m) { const keep = m[1] ?? ""; this.inputBuf = keep + after; this.inputCursor = keep.length; }
-          this.render();
-          continue;
-        }
-        if (b === 21) { // Ctrl+U
-          this.inputBuf = this.inputBuf.substring(this.inputCursor);
-          this.inputCursor = 0;
-          this.render();
-          continue;
-        }
-        if (b >= 32 && b < 127) { // Printable ASCII
-          const char = String.fromCharCode(b);
-          this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + char + this.inputBuf.substring(this.inputCursor);
-          this.inputCursor++;
-          this.render();
-          continue;
-        }
+        if (b === 27) { this.escapeBytes = [27]; continue; }
+        if (b === 24) return this.inputBuf.trim() || null;
+        if (b === 10) return this.inputBuf.trim() || null;
+        if (b === 13) { this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + "\n" + this.inputBuf.substring(this.inputCursor); this.inputCursor++; continue; }
+        if (b === 127 || b === 8) { if (this.inputCursor > 0) { this.inputBuf = this.inputBuf.substring(0, this.inputCursor - 1) + this.inputBuf.substring(this.inputCursor); this.inputCursor--; } continue; }
+        if (b === 9) { this.doAutoComplete(); continue; }
+        if (b === 23) { const before = this.inputBuf.substring(0, this.inputCursor); const after = this.inputBuf.substring(this.inputCursor); const m = before.match(/(.*\s+)?(\S*)$/); if (m) { const keep = m[1] ?? ""; this.inputBuf = keep + after; this.inputCursor = keep.length; } continue; }
+        if (b === 21) { this.inputBuf = this.inputBuf.substring(this.inputCursor); this.inputCursor = 0; continue; }
+        if (b >= 32 && b < 127) { const char = String.fromCharCode(b); this.inputBuf = this.inputBuf.substring(0, this.inputCursor) + char + this.inputBuf.substring(this.inputCursor); this.inputCursor++; continue; }
       }
+      // After processing all bytes in this batch, render once
+      this.render();
     }
   }
 
