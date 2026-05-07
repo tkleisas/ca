@@ -1421,6 +1421,7 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
     let messages: ChatMessage[] = [];
     let systemContent = "";
     let currentSessionId: string | null = null;
+    let agentAbort: AbortController | null = null;
 
     async function initSession(sessionId?: string): Promise<void> {
       systemContent = await buildSystemContent(config, Deno.cwd());
