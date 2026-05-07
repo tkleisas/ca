@@ -1500,6 +1500,16 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
           socket.send(JSON.stringify({
             type: "session_list", sessions, currentId: currentSessionId ?? "",
           }));
+          // Send loaded messages for initial display
+          const msgs = messages.filter(m => m.role !== "system").map(m => ({
+            role: m.role, content: m.content?.substring(0, 300) ?? null,
+          }));
+          if (msgs.length > 0) {
+            socket.send(JSON.stringify({
+              type: "session_switched", id: currentSessionId ?? "",
+              messages: msgs,
+            }));
+          }
         };
 
         socket.onmessage = async (event) => {
