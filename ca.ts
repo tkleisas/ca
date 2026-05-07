@@ -299,7 +299,7 @@ async function interactiveTui(existingMessages?: ChatMessage[]): Promise<void> {
               tui.addError(event.message!);
               break;
             case "done":
-              lastResult = { messages: event.messages! as unknown as ChatMessage[], needsRestart: (event as unknown as { needsRestart: boolean }).needsRestart ?? false };
+              if (event.messages) messages = event.messages;
               break;
             case "aborted":
               break;
@@ -308,10 +308,6 @@ async function interactiveTui(existingMessages?: ChatMessage[]): Promise<void> {
           const est = estimateMessagesTokens(messages).toLocaleString();
           tui.setStatus(est, event.type === "text" ? "streaming..." : undefined);
         }
-
-        // Get final result from the generator
-        // The stream yields events but the final return is in the for-await above
-        messages = (lastResult?.messages ?? messages);
       } catch (e) {
         tui.addError(`Error: ${(e as Error).message}`);
       } finally {
