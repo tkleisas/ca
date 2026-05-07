@@ -309,17 +309,15 @@ export class Tui {
   private escapeBytes: number[] = [];
 
   async readInput(): Promise<string | null> {
-    this.readingInput = false; // let spinner renders through initially
     this.inputBuf = "";
     this.inputCursor = 0;
     this.escapeBytes = [];
     this.renderNow();
-    this.readingInput = true; // block spinner during input loop
 
     const buf = new Uint8Array(64);
     while (true) {
       const n = await Deno.stdin.read(buf);
-      if (n === null) { this.readingInput = false; return null; }
+      if (n === null) return null;
 
       for (let j = 0; j < n; j++) {
         const b = buf[j];
