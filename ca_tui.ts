@@ -553,6 +553,7 @@ export class Tui {
   }
 
   render() {
+    if (this.readingInput) return; // don't emit ESC during input
     this.dirty = true;
     this.scheduleRender();
   }
