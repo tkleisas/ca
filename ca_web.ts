@@ -1491,13 +1491,20 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
         socket.onmessage = async (event) => {
           try {
             const data = JSON.parse(event.data as string);
-            if (data.type === "user_message") {
+            if (data.type === "abort") {
+              if (agentAbort) { agentAbort.abort(); agentAbort = null; }
+              socket.send(JSON.stringify({ type: "warning", message: "Agent aborted." }));
+            } else if (data.type === "user_message") {
               const prompt = data.content as string;
               if (!prompt?.trim()) return;
+              // Create abort controller for this run
+              agentAbort = new AbortController();
               const result = await runWebAgent(prompt, messages, {
                 config,
+                signal: agentAbort.signal,
                 onEvent: (ev) => { socket.send(JSON.stringify(ev)); },
               });
+              agentAbort = null;
               messages = result.messages;
               await autoSave();
             } else if (data.type === "session_list") {
