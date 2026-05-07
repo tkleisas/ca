@@ -161,7 +161,19 @@ public class ContentListPage
                                     .Submit()
                                     .Class("admin-btn admin-btn-success admin-btn-sm")
                             )
-                        : null!
+                        : null!,
+                    new Form()
+                        .Attr("method", "post")
+                        .Attr("action", $"/admin/content/{item.Id}/delete")
+                        .Attr("style", "display:inline;")
+                        .Attr("onsubmit", $"return confirm('Delete \\'{title.Replace("'", "\\'")}\\'? This cannot be undone.')")
+                        .Child(
+                            new Button()
+                                .Type("submit")
+                                .Class("admin-btn admin-btn-ghost admin-btn-sm")
+                                .Attr("style", "color:#f85149;")
+                                .Text("Delete")
+                        )
                 )
             };
         });
