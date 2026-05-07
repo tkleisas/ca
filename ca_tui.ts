@@ -403,8 +403,11 @@ export class Tui {
 
   addMessage(msg: ChatMessage) {
     this.messages.push(msg);
-    this.scrollOffset = 0; // auto-scroll to bottom
     this.rebuildLines();
+    // Auto-scroll to bottom
+    const convLines = this.getConversationLines();
+    const convAvail = Math.max(1, this.height - 4);
+    this.scrollOffset = Math.max(0, convLines.length - convAvail);
     this.render();
   }
 
