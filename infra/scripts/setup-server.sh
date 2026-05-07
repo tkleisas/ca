@@ -12,7 +12,13 @@ echo ">>> Updating system packages..."
 sudo apt-get update -qq && sudo apt-get upgrade -y -qq
 echo ""
 
-# ─── 2. Directory Structure ─────────────────────────────
+# ─── 2. Install Packages ────────────────────────────────
+echo ">>> Installing certbot..."
+sudo apt-get install -y -qq certbot python3-certbot-nginx
+echo "  certbot installed"
+echo ""
+
+# ─── 3. Directory Structure ─────────────────────────────
 echo ">>> Creating /opt/apps structure..."
 sudo mkdir -p /opt/apps/landing
 sudo chown -R calcium:calcium /opt/apps
@@ -47,7 +53,7 @@ echo "  /opt/apps/     — app root (owned by calcium)"
 echo "  /opt/apps/landing/ — static landing page"
 echo ""
 
-# ─── 3. nginx Configuration ─────────────────────────────
+# ─── 4. nginx Configuration ─────────────────────────────
 echo ">>> Configuring nginx reverse proxy..."
 
 # Remove default site
@@ -56,11 +62,12 @@ sudo rm -f /etc/nginx/sites-enabled/default
 # Create apps config directory
 sudo mkdir -p /etc/nginx/conf.d/apps
 
-# Write main reverse proxy config
+# Write main reverse proxy config (HTTP-only initially, SSL added by certbot)
 sudo tee /etc/nginx/sites-available/reverse-proxy > /dev/null << 'NGINX_EOF'
 # ─── CA-managed reverse proxy ───────────────────────────
 # Each app gets its own file in conf.d/apps/
 # Reload: sudo systemctl reload nginx
+# Certbot: sudo certbot --nginx -d <domain>
 
 server {
     listen 80 default_server;
@@ -85,6 +92,11 @@ server {
         add_header Content-Type text/plain;
     }
 
+    # Let's Encrypt ACME challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
     # Per-app proxy configs
     include /etc/nginx/conf.d/apps/*.conf;
 
@@ -100,22 +112,28 @@ NGINX_EOF
 # Enable it
 sudo ln -sf /etc/nginx/sites-available/reverse-proxy /etc/nginx/sites-enabled/reverse-proxy
 
+# Create certbot webroot
+sudo mkdir -p /var/www/certbot
+sudo chown -R calcium:calcium /var/www/certbot
+
 echo "  /etc/nginx/sites-available/reverse-proxy — main config"
 echo "  /etc/nginx/conf.d/apps/          — per-app proxy configs"
+echo "  /var/www/certbot/                — ACME challenge webroot"
 echo ""
 
-# ─── 4. Firewall ────────────────────────────────────────
+# ─── 5. Firewall ────────────────────────────────────────
 echo ">>> Configuring ufw firewall..."
 sudo ufw --force reset > /dev/null 2>&1
 sudo ufw default deny incoming > /dev/null
 sudo ufw default allow outgoing > /dev/null
 sudo ufw allow 22/tcp comment 'SSH' > /dev/null
 sudo ufw allow 80/tcp comment 'HTTP' > /dev/null
+sudo ufw allow 443/tcp comment 'HTTPS' > /dev/null
 sudo ufw --force enable > /dev/null 2>&1
-echo "  Firewall enabled: SSH(22) + HTTP(80)"
+echo "  Firewall enabled: SSH(22) + HTTP(80) + HTTPS(443)"
 echo ""
 
-# ─── 5. nginx Test & Reload ─────────────────────────────
+# ─── 6. nginx Test & Reload ─────────────────────────────
 echo ">>> Testing nginx config..."
 sudo nginx -t
 echo ">>> Reloading nginx..."
@@ -123,7 +141,7 @@ sudo systemctl reload nginx
 echo "  nginx reloaded"
 echo ""
 
-# ─── 6. Podman ──────────────────────────────────────────
+# ─── 7. Podman ──────────────────────────────────────────
 echo ">>> Configuring podman..."
 
 # Enable lingering for calcium user (containers survive logout)
@@ -135,12 +153,42 @@ podman network create app-net 2>/dev/null || echo "  network 'app-net' already e
 echo "  podman network: app-net"
 echo ""
 
-# ─── 7. Verify ───────────────────────────────────────────
+# ─── 8. Create Cert Helper ──────────────────────────────
+echo ">>> Creating certbot helper script..."
+cat > /opt/apps/ssl-cert.sh << 'CERT_EOF'
+#!/usr/bin/env bash
+# Usage: bash /opt/apps/ssl-cert.sh <domain> [domain2 ...]
+# Obtains Let's Encrypt cert and updates nginx
+set -euo pipefail
+DOMAINS=""
+for d in "$@"; do DOMAINS="$DOMAINS -d $d"; done
+if [ -z "$DOMAINS" ]; then
+    echo "Usage: bash /opt/apps/ssl-cert.sh <domain> [domain2 ...]"
+    exit 1
+fi
+echo "Requesting cert for:$DOMAINS"
+sudo certbot --nginx --non-interactive --agree-tos --email admin@gn01stic.gr \
+    --webroot-path /var/www/certbot \
+    $DOMAINS
+sudo systemctl reload nginx
+echo ""
+echo "Certificate installed! Auto-renewal is handled by certbot timer:"
+sudo systemctl status certbot.timer --no-pager 2>/dev/null || true
+CERT_EOF
+chmod +x /opt/apps/ssl-cert.sh
+echo "  /opt/apps/ssl-cert.sh — get SSL cert for a domain"
+echo ""
+
+# ─── 9. Verify ───────────────────────────────────────────
 echo "=== Setup Complete ==="
 echo ""
-echo "  nginx:  $(systemctl is-active nginx)"
-echo "  ufw:    $(sudo ufw status | head -1)"
-echo "  podman: $(systemctl is-active podman 2>/dev/null || echo 'socket-activated')"
+echo "  nginx:   $(systemctl is-active nginx)"
+echo "  ufw:     $(sudo ufw status | head -1)"
+echo "  podman:  $(systemctl is-active podman 2>/dev/null || echo 'socket-activated')"
+echo "  certbot: $(certbot --version 2>&1 | head -1)"
 echo ""
-echo "  Visit:  http://$(hostname -I | awk '{print $1}')/"
+echo "  Visit:   http://$(hostname -I | awk '{print $1}')/"
+echo ""
+echo "  To enable HTTPS for a domain:"
+echo "    bash /opt/apps/ssl-cert.sh yourdomain.com"
 echo ""
