@@ -255,7 +255,7 @@ export class Tui {
     this.statusGit = gitBranch;
     this.updateSize();
     Deno.stdin.setRaw(true);
-    await Deno.stdout.write(this.encoder.encode(
+    await Deno.stderr.write(this.encoder.encode(
       esc("?1049h") + esc("?25l") + esc("2J")
     ));
     this.render();
