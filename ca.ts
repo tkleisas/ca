@@ -131,7 +131,206 @@ ${b("Examples:")}
     ${c("\"read ca.ts and all ca_*.ts modules, analyze them, and improve error handling\"")}`);
 }
 
-// ─── Interactive Mode ──────────────────────────────────
+// ─── TUI Interactive Mode ──────────────────────────────
+
+async function interactiveTui(existingMessages?: ChatMessage[]): Promise<void> {
+  const config = getConfig();
+  const cwd = Deno.cwd();
+  const systemContent = await buildSystemContent(config, cwd);
+
+  let messages: ChatMessage[] = [{ role: "system", content: systemContent }];
+  let currentSessionId: string | null = null;
+
+  if (existingMessages) {
+    messages = existingMessages;
+    if (messages[0]?.role === "system") messages[0].content = systemContent;
+    try {
+      currentSessionId = await createSession(cwd, config.model);
+      await saveSession(cwd, currentSessionId, messages, config.model);
+    } catch { /* ok */ }
+  } else {
+    let loaded = false;
+    try {
+      const sessions = await listSessions(cwd);
+      if (sessions.length > 0) {
+        const loadedMsgs = await loadSession(cwd, sessions[0].id);
+        if (loadedMsgs.length > 0) {
+          messages = loadedMsgs;
+          if (messages[0]?.role === "system") messages[0].content = systemContent;
+          currentSessionId = sessions[0].id;
+          loaded = true;
+        }
+      }
+    } catch { /* ok */ }
+    if (!loaded) {
+      try {
+        const resumeMsgs = await loadConversation(`${cwd}/.ca_resume.json`);
+        if (resumeMsgs.length > 0) {
+          messages = resumeMsgs;
+          if (messages[0]?.role === "system") messages[0].content = systemContent;
+          currentSessionId = await createSession(cwd, config.model);
+          await saveSession(cwd, currentSessionId, messages, config.model);
+          loaded = true;
+        }
+      } catch { /* ok */ }
+    }
+    if (!loaded) {
+      currentSessionId = await createSession(cwd, config.model);
+    }
+  }
+
+  // Get git branch
+  let gitBranch = "";
+  try {
+    const proc = new Deno.Command("git", { args: ["branch", "--show-current"], cwd, stdout: "piped", stderr: "piped" });
+    const out = await proc.output();
+    gitBranch = new TextDecoder().decode(out.stdout).trim();
+  } catch { /* ok */ }
+
+  const { estimateMessagesTokens } = await import("./ca_client.ts");
+  const dirName = cwd.split("/").pop() ?? cwd;
+  const ctxTokens = estimateMessagesTokens(messages).toLocaleString();
+
+  const tui = new Tui();
+  await tui.init(config.model, ctxTokens, dirName, gitBranch);
+
+  // Rebuild conversation lines from loaded messages
+  for (const msg of messages) {
+    if (msg.role !== "system") tui.addMessage(msg);
+  }
+
+  let abortController: AbortController | null = null;
+
+  try {
+    while (true) {
+      const input = await tui.readInput();
+      if (input === null) break;
+      if (!input.trim()) continue;
+
+      // Commands
+      if (input.startsWith("/")) {
+        const parts = input.trim().split(/\s+/);
+        const cmd = parts[0].toLowerCase();
+        const rest = parts.slice(1).join(" ");
+
+        if (cmd === "/quit" || cmd === "/exit") {
+          if (currentSessionId && messages.length > 1) {
+            try { await saveSession(cwd, currentSessionId, messages, config.model); } catch { /* ok */ }
+          }
+          break;
+        }
+        if (cmd === "/new") {
+          if (currentSessionId && messages.length > 1) {
+            try { await saveSession(cwd, currentSessionId, messages, config.model); } catch { /* ok */ }
+          }
+          currentSessionId = await createSession(cwd, config.model);
+          messages = [{ role: "system", content: systemContent }];
+          tui.addWarning("New session created.");
+          continue;
+        }
+        if (cmd === "/clear") {
+          messages.length = 1;
+          tui.addWarning("Conversation cleared.");
+          continue;
+        }
+        if (cmd === "/tokens") {
+          const est = estimateMessagesTokens(messages);
+          const pct = ((est / config.maxTokens) * 100).toFixed(1);
+          tui.addWarning(`Context: ~${est.toLocaleString()} / ${config.maxTokens.toLocaleString()} (${pct}%)`);
+          continue;
+        }
+        if (cmd === "/model") {
+          tui.addWarning(`Model: ${config.model} | Base: ${config.apiBase} | Temp: ${config.temperature}`);
+          continue;
+        }
+        // Unknown command — send to agent
+      }
+
+      // Shell passthrough
+      if (input.startsWith("!")) {
+        const shellCmd = input.substring(1).trim();
+        if (shellCmd) {
+          try {
+            const proc = new Deno.Command("bash", { args: ["-c", shellCmd], cwd, stdout: "piped", stderr: "piped" });
+            const out = await proc.output();
+            const outStr = new TextDecoder().decode(out.stdout);
+            if (outStr) tui.addError(outStr.trim());
+            if (out.code !== 0) tui.addError(`[exit: ${out.code}]`);
+          } catch (e) {
+            tui.addError(`! ${(e as Error).message}`);
+          }
+        }
+        continue;
+      }
+
+      // Run agent
+      abortController = new AbortController();
+      tui.setRunning(true);
+      tui.addMessage({ role: "user", content: input });
+
+      try {
+        const stream = runAgentStream(input, messages, config, abortController.signal);
+        let lastResult: { messages: ChatMessage[]; needsRestart: boolean } | null = null;
+
+        for await (const event of stream) {
+          if (tui.getAborted()) {
+            abortController.abort();
+            tui.addWarning("Aborted.");
+            break;
+          }
+
+          switch (event.type) {
+            case "text":
+              tui.addTextChunk(event.content!);
+              break;
+            case "tool_call":
+              tui.addToolCall(event.toolId!, event.toolName!, event.toolArgs!);
+              break;
+            case "tool_result":
+              tui.updateToolResult(event.toolId!, event.toolResult!, event.toolError ?? false);
+              break;
+            case "tool_error":
+              tui.addError(`${event.toolName}: ${event.message}`);
+              break;
+            case "warning":
+              tui.addWarning(event.message!);
+              break;
+            case "error":
+              tui.addError(event.message!);
+              break;
+            case "done":
+              lastResult = { messages: event.messages! as unknown as ChatMessage[], needsRestart: (event as unknown as { needsRestart: boolean }).needsRestart ?? false };
+              break;
+            case "aborted":
+              break;
+          }
+
+          const est = estimateMessagesTokens(messages).toLocaleString();
+          tui.setStatus(est, event.type === "text" ? "streaming..." : undefined);
+        }
+
+        // Get final result from the generator
+        // The stream yields events but the final return is in the for-await above
+        messages = (lastResult?.messages ?? messages);
+      } catch (e) {
+        tui.addError(`Error: ${(e as Error).message}`);
+      } finally {
+        abortController = null;
+        tui.setRunning(false);
+        tui.setStatus(estimateMessagesTokens(messages).toLocaleString());
+
+        // Autosave
+        if (currentSessionId) {
+          try { await saveSession(cwd, currentSessionId, messages, config.model); } catch { /* ok */ }
+        }
+      }
+    }
+  } finally {
+    tui.shutdown();
+  }
+}
+
+// ─── Interactive Mode (simple) ─────────────────────────
 
 async function interactive(existingMessages?: ChatMessage[]): Promise<void> {
   const config = getConfig();
