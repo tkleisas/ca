@@ -1,3 +1,6 @@
+import type { AgentConfig, ChatMessage, ToolCall, ToolDef, ToolExecResult, SafetyCheck, DiffHunk, DiffLine } from "./ca_types.ts";
+import { isPathSafe, isCommandSafe } from "./ca_sandbox.ts";
+import { C, colorize, dim } from "./ca_ui.ts";
 export { buildToolDefs } from "./ca_tool_defs.ts";
 
 // ─── Tool Execution ────────────────────────────────────
