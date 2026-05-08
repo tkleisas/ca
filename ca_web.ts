@@ -842,7 +842,6 @@ function updateToolResult(id, name, result, isError, diff) {
   const tb = currentToolBlocks.get(id);
   if (!tb) return;
   const resDiv = tb.block.querySelector(".tool-result");
-  resDiv.style.display = "block";
 
   // Detect subagent "running" status
   const isRunning = name === "spawn_subagent" && !isError &&
@@ -850,6 +849,21 @@ function updateToolResult(id, name, result, isError, diff) {
 
   resDiv.className = "tool-result " + (isError ? "error" : isRunning ? "running" : "success");
   resDiv.textContent = result.length > 2000 ? result.substring(0, 2000) + "…" : result;
+
+  // Update the toggle icon to show success/failure
+  const toggleSpan = tb.block.querySelector(".toggle");
+  if (toggleSpan) {
+    toggleSpan.textContent = isError ? "✘" : "✓";
+    toggleSpan.style.color = isError ? "#f85149" : "#7ee787";
+  }
+
+  // Update args line with one-line summary
+  const argsSpan = tb.block.querySelector(".args");
+  const headerSpan = tb.block.querySelector(".name");
+  if (argsSpan) {
+    const preview = result.length > 80 ? result.substring(0, 80).replace(/\\n/g, " ") + "…" : result.replace(/\\n/g, " ");
+    argsSpan.textContent = isError ? preview : preview;
+  }
 
   if (diff) {
     const diffDiv = document.createElement("div");
