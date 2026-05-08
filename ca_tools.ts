@@ -1,8 +1,18 @@
-import type { AgentConfig, ChatMessage, ToolCall, ToolDef, ToolExecResult, SafetyCheck, DiffHunk, DiffLine } from "./ca_types.ts";
+import type { ToolDef, AgentConfig, ToolExecResult, SubagentHandle, SubagentResult } from "./ca_types.ts";
+import { C, colorize, dim, bold } from "./ca_ui.ts";
 import { isPathSafe, isCommandSafe } from "./ca_sandbox.ts";
-import { C, colorize, dim } from "./ca_ui.ts";
-export { buildToolDefs } from "./ca_tool_defs.ts";
 
+// ─── Subagent Process Registry ───────────────────────
+
+const subagents = new Map<string, SubagentHandle>();
+
+function genSubagentId(): string {
+  return "sub-" + [...crypto.getRandomValues(new Uint8Array(4))]
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// ─── Tool Definitions ─────────────────────────────────
+export { buildToolDefs } from "./ca_tool_defs.ts";
 // ─── Tool Execution ────────────────────────────────────
 
 export type AskUserCallback = (question: string) => Promise<string>;
@@ -740,4 +750,3 @@ async function execTestWeb(port: number, playwright: boolean, quick: boolean, op
     return { output: `Error running web tests: ${(e as Error).message}`, error: true };
   }
 }
-
