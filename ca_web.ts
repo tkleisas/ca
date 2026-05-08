@@ -505,6 +505,8 @@ function handleEvent(ev) {
       } else {
         addWarning(\`New session \${ev.id}\`);
       }
+      // Auto-scroll to bottom after loading
+      setTimeout(() => scrollDown(), 50);
       break;
   }
   scrollDown();
