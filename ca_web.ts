@@ -814,7 +814,8 @@ function addMessage(role, content) {
   const div = document.createElement("div");
   div.className = "msg msg-" + role;
   const roleLabel = role === "user" ? "❯ you" : role === "assistant" ? "CA" : role;
-  div.innerHTML = \`<div class="role">\${roleLabel}</div><div class="msg-content">\${renderMarkdown(content)}</div>\`;
+  const rendered = renderMarkdown(content);
+  div.innerHTML = \`<div class="role">\${roleLabel}</div><div class="msg-content" data-raw-text="\${escapeHtml(content)}">\${rendered}</div>\`;
   document.getElementById("messages").appendChild(div);
   return div;
 }
