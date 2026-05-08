@@ -1,5 +1,4 @@
-import { buildToolDefs } from "./ca_tool_defs.ts";
-import type { ToolDef } from "./ca_types.ts";
+export { buildToolDefs } from "./ca_tool_defs.ts";
 
 // ─── Tool Execution ────────────────────────────────────
 
