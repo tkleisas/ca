@@ -259,11 +259,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monos
 .msg-content .copy-btn.copied { background: #1a3d2e; border-color: #238636; color: #7ee787; }
 
 .tool-block { margin: 6px 0 6px 12px; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
-.tool-header { padding: 6px 10px; background: #1c2128; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.tool-header { padding: 6px 10px; background: #1c2128; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
 .tool-header .icon { font-size: 14px; }
 .tool-header .name { color: #58a6ff; }
-.tool-header .args { color: #8b949e; font-weight: 400; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tool-result { padding: 6px 10px; font-size: 12px; line-height: 1.4; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+.tool-header .args { color: #8b949e; font-weight: 400; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.tool-header .toggle { color: #484f58; font-size: 11px; margin-left: auto; }
+.tool-result { padding: 6px 10px; font-size: 12px; line-height: 1.4; white-space: pre-wrap; max-height: 200px; overflow-y: auto; display: none; }
+.tool-block.expanded .tool-result { display: block; }
 .tool-result.error { color: #f85149; background: #1a1115; }
 .tool-result.success { color: #8b949e; }
 .tool-result.running { color: #d2991d; animation: pulse 1.5s ease-in-out infinite; }
