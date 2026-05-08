@@ -821,8 +821,10 @@ function addMessage(role, content) {
 
 function appendToMsg(div, text) {
   const content = div.querySelector(".msg-content");
-  content.textContent += text;
-  content.innerHTML = renderMarkdown(content.textContent);
+  // Accumulate raw markdown in a data attribute (textContent strips formatting)
+  const raw = (content.dataset.rawText || "") + text;
+  content.dataset.rawText = raw;
+  content.innerHTML = renderMarkdown(raw);
 }
 
 function addToolCall(id, name, args) {
