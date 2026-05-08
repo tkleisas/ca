@@ -7,7 +7,6 @@ import { buildSystemContent, run, saveConversation, loadConversation, runSubagen
 import type { RunResult } from "./ca_agent.ts";
 import { C, colorize, dim, bold, printBanner, separator, highlightCode } from "./ca_ui.ts";
 import { startWebServer, type WebServerHandle } from "./ca_web.ts";
-import { Tui, runAgentStream, type TuiEvent } from "./ca_tui.ts";
 
 // ─── Global State ──────────────────────────────────────
 
