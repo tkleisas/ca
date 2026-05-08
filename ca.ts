@@ -835,14 +835,10 @@ async function main(): Promise<void> {
     // Don't return — fall through to interactive mode or single-shot below
   }
 
-  // Interactive mode - use TUI if terminal supports it
+  // Interactive mode
   if (interactiveMode || (webMode && promptParts.length === 0)) {
     ensureApiKey(config);
-    if (Deno.stderr.isTerminal() && Deno.stdin.isTerminal()) {
-      await interactiveTui();
-    } else {
-      await interactive();
-    }
+    await interactive();
     return;
   }
 
