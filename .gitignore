@@ -1,6 +1,7 @@
 # CA session data (autosaved conversations)
 .ca_resume.json
 .ca/
+infra/
 
 # Deno
 .cache/
