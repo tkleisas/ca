@@ -74,9 +74,8 @@ float NamModel::process(float input) {
     switch (m_backend) {
         case Backend::Fallback:
             return processFallback(input);
-        case Backend::RTNeural:
-            // TODO: RTNeural inference
-            return input;
+        case Backend::WaveNet:
+            return m_wavenet ? m_wavenet->process(input) : input;
         default:
             return input;
     }

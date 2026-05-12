@@ -107,8 +107,10 @@ private:
     
     AnalogChain m_chain;
     
+    // ─── WaveNet engine ──────────────────────────────
+    std::unique_ptr<wavenet::WaveNetEngine> m_wavenet;
+    
     // ─── RTNeural model data ──────────────────────────
-    // Placeholder for RTNeural model
     std::vector<float> m_rtWeights;
     
     // ─── Analog chain processing ──────────────────────
