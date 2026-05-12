@@ -9,8 +9,11 @@ namespace yawn {
 enum ParamTag : uint32_t {
     kParamInputGain = 0,
     kParamOutputLevel,
-    kParamTone,
-    kParamModelSelect,
+    kParamBass,
+    kParamMid,
+    kParamTreble,
+    kParamPresence,
+    kParamMaster,
     kParamBypass,
     kNumParams
 };
