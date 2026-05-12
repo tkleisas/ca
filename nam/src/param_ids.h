@@ -32,8 +32,11 @@ struct ParamInfo {
 constexpr ParamInfo kParamInfos[] = {
     { kParamInputGain,  "Input Gain",  "dB",  0.0, -24.0, 24.0, 0 },
     { kParamOutputLevel,"Output Level","dB",  0.0, -24.0, 24.0, 0 },
-    { kParamTone,       "Tone",         "",   0.5,   0.0,  1.0, 0 },
-    { kParamModelSelect,"Model",        "",   0.0,   0.0,  0.0, 0 },
+    { kParamBass,       "Bass",         "",   0.5,   0.0,  1.0, 0 },
+    { kParamMid,        "Mid",          "",   0.5,   0.0,  1.0, 0 },
+    { kParamTreble,     "Treble",       "",   0.5,   0.0,  1.0, 0 },
+    { kParamPresence,   "Presence",     "",   0.5,   0.0,  1.0, 0 },
+    { kParamMaster,     "Master",       "",   0.7,   0.0,  1.0, 0 },
     { kParamBypass,     "Bypass",       "",   0.0,   0.0,  1.0, 1 },
 };
 

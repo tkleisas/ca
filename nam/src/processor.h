@@ -58,13 +58,18 @@ private:
     float m_params[kNumParams] = {};
     
     // Smooth parameter interpolation
+    float m_currentBass = 0.5f;
+    float m_currentMid = 0.5f;
+    float m_currentTreble = 0.5f;
+    float m_currentPresence = 0.5f;
+    float m_currentMaster = 0.7f;
     float m_currentInputGain = 0.0f;
     float m_currentOutputLevel = 0.0f;
-    float m_currentTone = 0.5f;
     
-    // Tone state tracking (to detect changes)
-    float m_lastToneApplied = -1.0f;
-    float m_pendingTone = 0.5f;
+    // Tone change tracking
+    float m_lastBass = -1.0f, m_lastMid = -1.0f;
+    float m_lastTreble = -1.0f, m_lastPresence = -1.0f;
+    float m_lastMaster = -1.0f;
     
     static constexpr double kSmoothTime = 0.005; // 5ms smoothing
     double m_smoothCoeff = 0.0;

@@ -11,8 +11,18 @@ namespace yawn {
 bool NamModel::load(const std::string& path) {
     unload();
     
-    // Try loading as WaveNet binary model first
+    // Try loading as NAM directory first (config.json + weights/)
     m_wavenet = std::make_unique<wavenet::WaveNetEngine>();
+    if (m_wavenet->loadModel(path, path + "/weights")) {
+        m_backend = Backend::WaveNet;
+        m_loaded = true;
+        m_name = path.substr(path.find_last_of("/\\") + 1);
+        m_sampleRate = m_wavenet->sampleRate();
+        updateEQCoefficients();
+        return true;
+    }
+    
+    // Try loading as WaveNet binary model
     if (m_wavenet->loadBinary(path)) {
         m_backend = Backend::WaveNet;
         m_loaded = true;
@@ -31,6 +41,10 @@ bool NamModel::load(const std::string& path) {
     updateEQCoefficients();
     
     return true;
+}
+
+bool NamModel::loadNamDirectory(const std::string& dirPath) {
+    return load(dirPath);
 }
 
 void NamModel::unload() {

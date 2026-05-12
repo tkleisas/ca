@@ -14,11 +14,63 @@ namespace wavenet {
 bool WaveNetEngine::loadModel(const std::string& jsonPath,
                               const std::string& weightsDir)
 {
-    // TODO: Parse NAM config.json and load .npy weights
-    // For now, initialize with identity pass-through
+    // Read config.json
+    std::string configPath = jsonPath;
+    if (configPath.find("config.json") == std::string::npos) {
+        configPath += "/config.json";
+    }
+    
+    std::ifstream configFile(configPath);
+    if (!configFile) return false;
+    
+    std::string json((std::istreambuf_iterator<char>(configFile)),
+                     std::istreambuf_iterator<char>());
+    
+    // Simple JSON parser for NAM config
+    auto getInt = [&](const std::string& key, int def) -> int {
+        auto pos = json.find("\"" + key + "\"");
+        if (pos == std::string::npos) return def;
+        pos = json.find(":", pos);
+        if (pos == std::string::npos) return def;
+        pos++;
+        while (pos < (int)json.length() && (json[pos] == ' ' || json[pos] == '\n')) pos++;
+        return std::stoi(json.substr(pos));
+    };
+    
+    auto getFloat = [&](const std::string& key, float def) -> float {
+        auto pos = json.find("\"" + key + "\"");
+        if (pos == std::string::npos) return def;
+        pos = json.find(":", pos);
+        if (pos == std::string::npos) return def;
+        pos++;
+        while (pos < (int)json.length() && (json[pos] == ' ' || json[pos] == '\n')) pos++;
+        return std::stof(json.substr(pos));
+    };
+    
+    auto getStr = [&](const std::string& key, const std::string& def) -> std::string {
+        auto pos = json.find("\"" + key + "\"");
+        if (pos == std::string::npos) return def;
+        pos = json.find("\"", pos + key.length() + 2);
+        if (pos == std::string::npos) return def;
+        pos++;
+        auto end = json.find("\"", pos);
+        if (end == std::string::npos) return def;
+        return json.substr(pos, end - pos);
+    };
+    
     reset();
-    m_loaded = true;
-    return true;
+    
+    auto& m = m_model;
+    m.channels = getInt("channels", 16);
+    m.numBlocks = getInt("num_blocks", 8);
+    m.sampleRate = getFloat("sample_rate", 48000.0);
+    m.name = getStr("name", "Unknown");
+    m.loudness = getFloat("loudness", 1.0f);
+    
+    // Currently, the full weight loading needs numpy, so fall back
+    // to asking user to convert first with convert_nam.py
+    reset();
+    return false; // Require conversion via convert_nam.py
 }
 
 bool WaveNetEngine::loadBinary(const std::string& path) {

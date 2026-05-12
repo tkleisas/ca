@@ -22,8 +22,11 @@ public:
     NamModel() = default;
     ~NamModel() = default;
 
-    // Load a model file
+    // Load a model file (.yawn binary or .nam directory)
     bool load(const std::string& path);
+    
+    // Load from NAM directory (config.json + weights/)
+    bool loadNamDirectory(const std::string& dirPath);
 
     // Unload current model
     void unload();
