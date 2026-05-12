@@ -11,8 +11,19 @@ namespace yawn {
 bool NamModel::load(const std::string& path) {
     unload();
     
-    // TODO: Parse .nam file (JSON config + numpy weights)
-    // For now, always use the fallback analog chain
+    // Try loading as WaveNet binary model first
+    m_wavenet = std::make_unique<wavenet::WaveNetEngine>();
+    if (m_wavenet->loadBinary(path)) {
+        m_backend = Backend::WaveNet;
+        m_loaded = true;
+        m_name = path.substr(path.find_last_of("/\\") + 1);
+        m_sampleRate = m_wavenet->sampleRate();
+        updateEQCoefficients();
+        return true;
+    }
+    
+    // Fallback: use analog-modeled chain
+    m_wavenet.reset();
     m_backend = Backend::Fallback;
     m_loaded = true;
     m_name = path.substr(path.find_last_of("/\\") + 1);
