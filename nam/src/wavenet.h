@@ -55,15 +55,16 @@ struct WaveNetModel {
     float loudness = 1.0f;
     
     // Pre-allocated inference buffers
-    std::vector<float> inputBuffer;    // receptive field sized
-    std::vector<float> convBuffer;     // channels sized
-    std::vector<float> filterBuffer;   // channels sized
-    std::vector<float> gateBuffer;     // channels sized
-    std::vector<float> skipBuffer;     // channels sized
-    std::vector<float> residualBuffer; // channels sized
+    std::vector<float> inputBuffer;    // raw audio history (maxRF)
+    std::vector<float> convState;      // channels × maxRF (per-channel history)
+    std::vector<float> convBuffer;     // channels
+    std::vector<float> filterBuffer;   // channels
+    std::vector<float> gateBuffer;     // channels
+    std::vector<float> skipBuffer;     // channels (skip connections accumulator)
     std::vector<float> headOutput;     // 1
     
     int receptiveField = 0;
+    int inputPos = 0;                  // write position in circular buffers
 };
 
 // ─── WaveNet Engine ──────────────────────────────────

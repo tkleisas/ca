@@ -71,10 +71,12 @@ set(YAWN_SOURCES
     src/processor.cpp
     src/controller.cpp
     src/nam_model.cpp
+    src/wavenet.cpp
     src/param_ids.h
     src/processor.h
     src/controller.h
     src/nam_model.h
+    src/wavenet.h
     src/version.h
 )
 

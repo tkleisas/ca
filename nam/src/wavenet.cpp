@@ -137,17 +137,12 @@ float WaveNetEngine::process(float input) {
     if (!m_loaded) return input;
     
     auto& m = m_model;
+    int RF = m.receptiveField;
     
-    // Shift input buffer and insert new sample
-    std::memmove(m.inputBuffer.data(),
-                 m.inputBuffer.data() + 1,
-                 (m.receptiveField - 1) * sizeof(float));
-    m.inputBuffer[m.receptiveField - 1] = input;
+    // ─── Write new input into circular buffers ─────────
+    m.inputBuffer[m.inputPos] = input;
     
-    // Input convolution
-    std::fill(m.convBuffer.begin(), m.convBuffer.end(), 0.0f);
-    std::fill(m.skipBuffer.begin(), m.skipBuffer.end(), 0.0f);
-    
+    // ─── Input convolution ────────────────────────────
     {
         const auto& w = m.inputConv;
         const float* weight = w.weight.data();
@@ -156,24 +151,29 @@ float WaveNetEngine::process(float input) {
         for (int oc = 0; oc < m.channels; ++oc) {
             float sum = (oc < w.outChannels) ? bias[oc] : 0.0f;
             for (int k = 0; k < w.kernelSize; ++k) {
-                int inputIdx = m.receptiveField - w.kernelSize + k;
+                int offset = (RF - 1) - k;  // k=0 = newest
+                int idx = (m.inputPos + offset) % RF;
                 int weightIdx = oc * w.kernelSize + k;
                 if (weightIdx < (int)w.weight.size()) {
-                    sum += m.inputBuffer[inputIdx] * weight[weightIdx];
+                    sum += m.inputBuffer[idx] * weight[weightIdx];
                 }
             }
+            // Write to conv state for next stage
+            m.convState[oc * RF + m.inputPos] = sum;
             m.convBuffer[oc] = sum;
         }
     }
     
-    // Dilated blocks
+    // ─── Dilated blocks ───────────────────────────────
+    std::fill(m.skipBuffer.begin(), m.skipBuffer.end(), 0.0f);
+    
     for (const auto& block : m.blocks) {
         // Filter path
-        conv1D(block.filterConv, m.convBuffer.data(), m.filterBuffer.data());
+        conv1D(block.filterConv, m.convState.data(), m.filterBuffer.data());
         applyTanh(m.filterBuffer.data(), m.channels);
         
         // Gate path
-        conv1D(block.gateConv, m.convBuffer.data(), m.gateBuffer.data());
+        conv1D(block.gateConv, m.convState.data(), m.gateBuffer.data());
         applySigmoid(m.gateBuffer.data(), m.channels);
         
         // Gated activation
@@ -181,21 +181,36 @@ float WaveNetEngine::process(float input) {
                  m.filterBuffer.data(), m.channels);
         
         // Mix (1×1 conv) and add to skip connections
-        conv1D(block.mixConv, m.filterBuffer.data(), m.filterBuffer.data());
+        conv1D(block.mixConv, m.convState.data(), m.filterBuffer.data());
         add(m.skipBuffer.data(), m.filterBuffer.data(),
             m.skipBuffer.data(), m.channels);
         
-        // Residual connection: convBuffer += filterBuffer
-        add(m.convBuffer.data(), m.filterBuffer.data(),
-            m.convBuffer.data(), m.channels);
+        // Update conv state with residual
+        for (int ch = 0; ch < m.channels; ++ch) {
+            m.convState[ch * RF + m.inputPos] = m.convBuffer[ch] + m.filterBuffer[ch];
+            m.convBuffer[ch] = m.convState[ch * RF + m.inputPos];
+        }
     }
     
-    // Head: mix skip connections to output
-    conv1D(m.headConv, m.skipBuffer.data(), m.headOutput.data());
+    // ─── Head: mix skip connections to output ──────────
+    // Head is a 1x1 conv: channels → 1
+    {
+        const auto& w = m.headConv;
+        const float* weight = w.weight.data();
+        const float* bias = w.bias.data();
+        float sum = bias[0];
+        for (int ic = 0; ic < m.channels && ic < w.inChannels; ++ic) {
+            sum += m.skipBuffer[ic] * weight[ic];
+        }
+        m.headOutput[0] = sum;
+    }
     
     float output = m.headOutput[0] * m.loudness;
     
-    // Soft clip
+    // ─── Advance circular buffer position ─────────────
+    m.inputPos = (m.inputPos + 1) % RF;
+    
+    // Soft clip output
     output = std::tanh(output);
     
     return output;
