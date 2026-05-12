@@ -3,8 +3,10 @@
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "nam_model.h"
 #include "param_ids.h"
+#include "dsp_utils.h"
 
 #include <memory>
+#include <string>
 
 namespace yawn {
 
