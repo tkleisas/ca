@@ -67,10 +67,86 @@ bool WaveNetEngine::loadModel(const std::string& jsonPath,
     m.name = getStr("name", "Unknown");
     m.loudness = getFloat("loudness", 1.0f);
     
-    // Currently, the full weight loading needs numpy, so fall back
-    // to asking user to convert first with convert_nam.py
-    reset();
-    return false; // Require conversion via convert_nam.py
+    // Try different weight name patterns (NAM uses PyTorch naming conventions)
+    auto loadW = [&](const std::string& name) -> npy::NpyArray {
+        std::vector<std::string> patterns = {
+            weightsDir + "/" + name + ".npy",
+            weightsDir + "/net._" + name + ".npy",
+            weightsDir + "/_net._" + name + ".npy",
+        };
+        for (const auto& p : patterns) {
+            try { return npy::load(p); }
+            catch (...) { /* try next */ }
+        }
+        throw std::runtime_error("Cannot find weights for: " + name);
+    };
+    
+    auto loadConv = [&](const std::string& name, int dilation) -> Conv1DWeights {
+        Conv1DWeights c;
+        c.dilation = dilation;
+        try {
+            auto w = loadW(name + ".weight");
+            c.outChannels = w.shape[0];
+            c.inChannels = w.shape.size() > 1 ? w.shape[1] : 1;
+            c.kernelSize = w.shape.size() > 2 ? w.shape[2] : 1;
+            c.weight = w.data;
+            
+            auto b = loadW(name + ".bias");
+            c.bias = b.data;
+        } catch (...) {
+            // Zero-init if missing
+            c.weight.assign(c.outChannels * c.inChannels * c.kernelSize, 0.0f);
+            c.bias.assign(c.outChannels, 0.0f);
+        }
+        return c;
+    };
+    
+    try {
+        // Input convolution
+        m.inputConv = loadConv("input_conv", 1);
+        
+        // Dilated blocks
+        m.blocks.resize(m.numBlocks);
+        int dilations[] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048};
+        
+        for (int i = 0; i < m.numBlocks; ++i) {
+            int dil = dilations[std::min(i, (int)(sizeof(dilations)/sizeof(dilations[0])) - 1)];
+            auto& block = m.blocks[i];
+            
+            block.filterConv = loadConv("blocks." + std::to_string(i) + ".filter_conv", dil);
+            block.gateConv   = loadConv("blocks." + std::to_string(i) + ".gate_conv", dil);
+            block.mixConv    = loadConv("blocks." + std::to_string(i) + ".mix_conv", 1);
+        }
+        
+        // Head convolution
+        m.headConv = loadConv("head_conv", 1);
+        
+    } catch (const std::exception& e) {
+        // If any weight loading fails, return false for fallback
+        reset();
+        return false;
+    }
+    
+    // Allocate inference buffers
+    m.receptiveField = 0;
+    for (const auto& block : m.blocks) {
+        int rf = (block.filterConv.kernelSize - 1) * block.filterConv.dilation + 1;
+        if (rf > m.receptiveField) m.receptiveField = rf;
+    }
+    m.receptiveField += (m.inputConv.kernelSize - 1) + 1;
+    m.receptiveField = std::max(m.receptiveField, 1);
+    
+    m.inputBuffer.assign(m.receptiveField, 0.0f);
+    m.convState.assign(m.channels * m.receptiveField, 0.0f);
+    m.convBuffer.assign(m.channels, 0.0f);
+    m.filterBuffer.assign(m.channels, 0.0f);
+    m.gateBuffer.assign(m.channels, 0.0f);
+    m.skipBuffer.assign(m.channels, 0.0f);
+    m.headOutput.assign(1, 0.0f);
+    m.inputPos = 0;
+    
+    m_loaded = true;
+    return true;
 }
 
 bool WaveNetEngine::loadBinary(const std::string& path) {

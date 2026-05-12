@@ -5,6 +5,7 @@
 #include <memory>
 #include <array>
 #include <cmath>
+#include "npy_loader.h"
 
 // ─── Lightweight WaveNet Inference ────────────────────
 // Implements the Neural Amp Modeler architecture directly

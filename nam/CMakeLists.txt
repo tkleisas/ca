@@ -72,7 +72,9 @@ set(YAWN_SOURCES
     src/controller.cpp
     src/nam_model.cpp
     src/wavenet.cpp
+    src/npy_loader.cpp
     src/param_ids.h
+    src/npy_loader.h
     src/processor.h
     src/controller.h
     src/nam_model.h
