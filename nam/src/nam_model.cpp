@@ -66,6 +66,10 @@ void NamModel::setToneFull(float bass, float mid, float treble, float presence) 
     updateEQCoefficients();
 }
 
+void NamModel::setMasterVolume(float vol) {
+    m_chain.masterVolume = vol;
+}
+
 // ─── Processing ──────────────────────────────────────
 
 float NamModel::process(float input) {
