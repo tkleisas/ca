@@ -38,6 +38,10 @@ public:
     // Set sample rate (for EQ coefficients)
     void setSampleRate(double sr);
 
+    // Tone controls (0.0 = dark, 0.5 = flat, 1.0 = bright)
+    void setTone(float value);
+    void setToneFull(float bass, float mid, float treble, float presence);
+
     double sampleRate() const { return m_sampleRate; }
     const std::string& name() const { return m_name; }
 

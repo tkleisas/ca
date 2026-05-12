@@ -33,6 +33,28 @@ void NamModel::setSampleRate(double sr) {
     updateEQCoefficients();
 }
 
+void NamModel::setTone(float value) {
+    // Map single tone knob to bass/mid/treble/presence
+    // value < 0.5: cut highs, boost lows
+    // value > 0.5: boost highs, cut lows
+    float normalized = (value - 0.5f) * 2.0f; // -1..1
+    
+    m_chain.bass = 0.5f - normalized * 0.3f;
+    m_chain.mid = 0.5f;
+    m_chain.treble = 0.5f + normalized * 0.4f;
+    m_chain.presence = 0.5f + normalized * 0.3f;
+    
+    updateEQCoefficients();
+}
+
+void NamModel::setToneFull(float bass, float mid, float treble, float presence) {
+    m_chain.bass = bass;
+    m_chain.mid = mid;
+    m_chain.treble = treble;
+    m_chain.presence = presence;
+    updateEQCoefficients();
+}
+
 // ─── Processing ──────────────────────────────────────
 
 float NamModel::process(float input) {

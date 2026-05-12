@@ -129,12 +129,7 @@ tresult PLUGIN_API YawnProcessor::process(ProcessData& data) {
         // Update tone controls when parameter changes
         if (m_currentTone != m_lastToneApplied && (i % 16 == 0)) {
             m_lastToneApplied = m_currentTone;
-            // Map tone to model's treble + presence
-            // Tone at 0.5 = flat, < 0.5 = darker, > 0.5 = brighter
-            auto& chain = *reinterpret_cast<AnalogChain*>(
-                reinterpret_cast<char*>(m_model.get()) + sizeof(NamModel));
-            // Access internal state via public interface
-            // TODO: add proper public API to model
+            m_model->setTone(m_currentTone);
         }
         
         // Run through NAM model

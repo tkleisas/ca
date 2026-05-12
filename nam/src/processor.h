@@ -62,6 +62,10 @@ private:
     float m_currentOutputLevel = 0.0f;
     float m_currentTone = 0.5f;
     
+    // Tone state tracking (to detect changes)
+    float m_lastToneApplied = -1.0f;
+    float m_pendingTone = 0.5f;
+    
     static constexpr double kSmoothTime = 0.005; // 5ms smoothing
     double m_smoothCoeff = 0.0;
 };
