@@ -126,6 +126,17 @@ tresult PLUGIN_API YawnProcessor::process(ProcessData& data) {
         // Apply input gain
         sample *= m_currentInputGain;
         
+        // Update tone controls when parameter changes
+        if (m_currentTone != m_lastToneApplied && (i % 16 == 0)) {
+            m_lastToneApplied = m_currentTone;
+            // Map tone to model's treble + presence
+            // Tone at 0.5 = flat, < 0.5 = darker, > 0.5 = brighter
+            auto& chain = *reinterpret_cast<AnalogChain*>(
+                reinterpret_cast<char*>(m_model.get()) + sizeof(NamModel));
+            // Access internal state via public interface
+            // TODO: add proper public API to model
+        }
+        
         // Run through NAM model
         sample = m_model->process(sample);
         
