@@ -100,18 +100,19 @@ tresult PLUGIN_API YawnProcessor::process(ProcessData& data) {
 
     // ─── Check bypass ─────────────────────────────────
     if (m_params[kParamBypass] > 0.5f) {
-        // Pass through
-        float* in = data.inputs[0].channelBuffers32[0];
-        float* out = data.outputs[0].channelBuffers32[0];
-        if (in != out) {
-            std::copy(in, in + data.numSamples, out);
+        for (int32 ch = 0; ch < data.inputs[0].numChannels; ++ch) {
+            float* in = data.inputs[0].channelBuffers32[ch];
+            float* out = data.outputs[0].channelBuffers32[ch];
+            if (in != out) {
+                std::copy(in, in + data.numSamples, out);
+            }
         }
         return kResultOk;
     }
 
     // ─── Process audio ────────────────────────────────
-    float* in = data.inputs[0].channelBuffers32[0];
-    float* out = data.outputs[0].channelBuffers32[0];
+    int32 numChannels = std::min(data.inputs[0].numChannels,
+                                 data.outputs[0].numChannels);
     int32 numSamples = data.numSamples;
 
     // Smooth parameter transitions
