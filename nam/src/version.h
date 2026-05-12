@@ -13,7 +13,7 @@ constexpr const char* EMAIL = "admin@gn01stic.gr";
 // ─── VST3 Identifiers ─────────────────────────────────
 
 // MUST be a valid GUID — generate with: python3 -c "import uuid; print(str(uuid.uuid4()))"
-constexpr const char* PROCESSOR_UID = "a1b2c3d4-5678-9abc-def0-123456789abc";
-constexpr const char* CONTROLLER_UID = "b2c3d4e5-6789-abcd-ef01-234567890123";
+constexpr const char* PROCESSOR_UID = "43accae2-6b52-4ba2-8480-cf78d56c1cda";
+constexpr const char* CONTROLLER_UID = "c465494c-1bff-4485-8fde-0371a5203c6f";
 
 } // namespace yawn
