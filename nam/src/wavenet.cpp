@@ -82,12 +82,13 @@ bool WaveNetEngine::loadBinary(const std::string& path) {
     m.receptiveField += (m.inputConv.kernelSize - 1) + 1;
     
     m.inputBuffer.assign(m.receptiveField, 0.0f);
+    m.convState.assign(m.channels * m.receptiveField, 0.0f);
     m.convBuffer.assign(m.channels, 0.0f);
     m.filterBuffer.assign(m.channels, 0.0f);
     m.gateBuffer.assign(m.channels, 0.0f);
     m.skipBuffer.assign(m.channels, 0.0f);
-    m.residualBuffer.assign(m.channels, 0.0f);
     m.headOutput.assign(1, 0.0f);
+    m.inputPos = 0;
     
     m_loaded = true;
     return true;
