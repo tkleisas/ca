@@ -48,7 +48,7 @@ public:
 
     enum class Backend {
         Fallback,   // Built-in analog-modeled chain
-        RTNeural,   // RTNeural inference
+        WaveNet,    // Custom WaveNet inference (loaded .nam models)
         None
     };
     
