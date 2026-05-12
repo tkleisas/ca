@@ -100,9 +100,12 @@ void WaveNetEngine::reset() {
 }
 
 // ─── Convolution ─────────────────────────────────────
+// Uses circular buffer for per-channel state.
+// state: [channels × RF] where state[ch * RF + pos] is the oldest sample
+// inputPos: current write position in the circular buffer
 
 void WaveNetEngine::conv1D(const Conv1DWeights& w,
-                           const float* input,
+                           const float* state,
                            float* output)
 {
     const float* weight = w.weight.data();
@@ -111,14 +114,17 @@ void WaveNetEngine::conv1D(const Conv1DWeights& w,
     int outCh = w.outChannels;
     int kSize = w.kernelSize;
     int dil = w.dilation;
+    int RF = m_model.receptiveField;
+    int pos = m_inputPos;
     
     for (int oc = 0; oc < outCh; ++oc) {
         float sum = bias[oc];
         for (int ic = 0; ic < inCh; ++ic) {
             for (int k = 0; k < kSize; ++k) {
-                int inputIdx = (ic * m_model.receptiveField) + k * dil;
+                int offset = (RF - 1) - k * dil;  // from newest to oldest
+                int idx = (ic * RF) + ((pos + offset) % RF);
                 int weightIdx = ((oc * inCh) + ic) * kSize + k;
-                sum += input[inputIdx] * weight[weightIdx];
+                sum += state[idx] * weight[weightIdx];
             }
         }
         output[oc] = sum;
