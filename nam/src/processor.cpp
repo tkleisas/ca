@@ -45,12 +45,16 @@ tresult PLUGIN_API YawnProcessor::setBusArrangements(
     SpeakerArrangement* inputs, int32 numIns,
     SpeakerArrangement* outputs, int32 numOuts)
 {
-    // Accept mono → mono only
-    if (numIns == 1 && numOuts == 1 &&
-        inputs[0] == SpeakerArr::kMono &&
-        outputs[0] == SpeakerArr::kMono)
-    {
-        return kResultOk;
+    // Accept mono → mono and stereo → stereo
+    if (numIns == 1 && numOuts == 1) {
+        if (inputs[0] == SpeakerArr::kMono && outputs[0] == SpeakerArr::kMono) {
+            m_isStereo = false;
+            return kResultOk;
+        }
+        if (inputs[0] == SpeakerArr::kStereo && outputs[0] == SpeakerArr::kStereo) {
+            m_isStereo = true;
+            return kResultOk;
+        }
     }
     return kResultFalse;
 }
