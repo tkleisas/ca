@@ -124,46 +124,42 @@ tresult PLUGIN_API YawnProcessor::process(ProcessData& data) {
     float targetPresence = m_params[kParamPresence];
     float targetMaster = m_params[kParamMaster];
 
-    for (int32 i = 0; i < numSamples; ++i) {
-        // Smooth (one-pole lowpass)
-        m_currentInputGain += m_smoothCoeff * (targetInputGain - m_currentInputGain);
-        m_currentOutputLevel += m_smoothCoeff * (targetOutputLevel - m_currentOutputLevel);
-        m_currentBass += m_smoothCoeff * (targetBass - m_currentBass);
-        m_currentMid += m_smoothCoeff * (targetMid - m_currentMid);
-        m_currentTreble += m_smoothCoeff * (targetTreble - m_currentTreble);
-        m_currentPresence += m_smoothCoeff * (targetPresence - m_currentPresence);
-        m_currentMaster += m_smoothCoeff * (targetMaster - m_currentMaster);
-
-        // Update model tone controls when any band changes
-        if (m_currentBass != m_lastBass || m_currentMid != m_lastMid ||
-            m_currentTreble != m_lastTreble || m_currentPresence != m_lastPresence) {
-            m_lastBass = m_currentBass;
-            m_lastMid = m_currentMid;
-            m_lastTreble = m_currentTreble;
-            m_lastPresence = m_currentPresence;
-            m_model->setToneFull(m_currentBass, m_currentMid,
-                                m_currentTreble, m_currentPresence);
+    for (int32 ch = 0; ch < numChannels; ++ch) {
+        float* in = data.inputs[0].channelBuffers32[ch];
+        float* out = data.outputs[0].channelBuffers32[ch];
+        auto* model = (ch == 0 || !m_modelRight) ? m_model.get() : m_modelRight.get();
+        
+        for (int32 i = 0; i < numSamples; ++i) {
+            // Smooth params (only on first channel to avoid redundant work)
+            if (ch == 0) {
+                m_currentInputGain += m_smoothCoeff * (targetInputGain - m_currentInputGain);
+                m_currentOutputLevel += m_smoothCoeff * (targetOutputLevel - m_currentOutputLevel);
+                m_currentBass += m_smoothCoeff * (targetBass - m_currentBass);
+                m_currentMid += m_smoothCoeff * (targetMid - m_currentMid);
+                m_currentTreble += m_smoothCoeff * (targetTreble - m_currentTreble);
+                m_currentPresence += m_smoothCoeff * (targetPresence - m_currentPresence);
+                m_currentMaster += m_smoothCoeff * (targetMaster - m_currentMaster);
+                
+                if (m_currentBass != m_lastBass || m_currentMid != m_lastMid ||
+                    m_currentTreble != m_lastTreble || m_currentPresence != m_lastPresence) {
+                    m_lastBass = m_currentBass; m_lastMid = m_currentMid;
+                    m_lastTreble = m_currentTreble; m_lastPresence = m_currentPresence;
+                    model->setToneFull(m_currentBass, m_currentMid,
+                                       m_currentTreble, m_currentPresence);
+                }
+                if (m_currentMaster != m_lastMaster) {
+                    m_lastMaster = m_currentMaster;
+                    model->setMasterVolume(m_currentMaster);
+                }
+            }
+            
+            float sample = in[i];
+            sample *= m_currentInputGain;
+            sample = model->process(sample);
+            sample *= m_currentOutputLevel;
+            sample = std::tanh(sample);
+            out[i] = sample;
         }
-        if (m_currentMaster != m_lastMaster) {
-            m_lastMaster = m_currentMaster;
-            m_model->setMasterVolume(m_currentMaster);
-        }
-
-        float sample = in[i];
-        
-        // Apply input gain
-        sample *= m_currentInputGain;
-        
-        // Run through NAM model
-        sample = m_model->process(sample);
-        
-        // Apply output level
-        sample *= m_currentOutputLevel;
-        
-        // Soft clip final output
-        sample = std::tanh(sample);
-        
-        out[i] = sample;
     }
 
     return kResultOk;

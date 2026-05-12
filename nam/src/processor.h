@@ -54,7 +54,9 @@ public:
 
 private:
     std::unique_ptr<NamModel> m_model;
+    std::unique_ptr<NamModel> m_modelRight; // second model for stereo (or nullptr = mono)
     double m_sampleRate = 48000.0;
+    bool m_isStereo = false;
     float m_params[kNumParams] = {};
     
     // Smooth parameter interpolation
