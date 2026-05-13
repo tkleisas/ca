@@ -80,7 +80,7 @@ export async function chatCompletion(
       }
 
       const data = await response.json();
-      const message = data.choices[0].message as ChatMessage;
+      const message = sanitizeMessages([data.choices[0].message as ChatMessage])[0];
       return { message, usage: parseUsage(data) };
     } catch (e) {
       if (attempt === maxRetries - 1 || !isRetryableError(e)) throw e;
@@ -238,8 +238,7 @@ export async function* chatCompletionStream(
       // Build final message
       const finalMessage: ChatMessage = {
         role: "assistant",
-        content: null,
-      };
+      } as ChatMessage;
 
       if (toolCalls.length > 0) {
         finalMessage.tool_calls = toolCalls.map((tc) => ({
@@ -271,6 +270,20 @@ export async function* chatCompletionStream(
 
 // ─── Build Request Body ───────────────────────────────
 
+function sanitizeMessages(messages: ChatMessage[]): ChatMessage[] {
+  return messages.flatMap((m) => {
+    const emptyContent = m.content === null || m.content === undefined || m.content === "";
+    if (emptyContent && m.tool_calls?.length) {
+      const { content: _, ...rest } = m;
+      return [rest as ChatMessage];
+    }
+    if (emptyContent && !m.tool_calls?.length) {
+      return [{ ...m, content: " " }];
+    }
+    return [m];
+  });
+}
+
 function buildRequestBody(
   messages: ChatMessage[],
   tools: ToolDef[],
@@ -278,7 +291,7 @@ function buildRequestBody(
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: config.model,
-    messages,
+    messages: sanitizeMessages(messages),
     max_tokens: config.maxOutputTokens,
     temperature: config.temperature,
     tools,
