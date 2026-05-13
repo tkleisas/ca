@@ -691,9 +691,13 @@ ${tools.map(t => `- ${t}`).join("\n")}
       break;
     }
 
+    // Auto-adjust max output tokens for subagent too
+    const availableHeadroom = Math.max(0, config.maxTokens - estTokens);
+    const effectiveMaxOutput = Math.max(1, Math.min(config.maxOutputTokens, availableHeadroom));
+
     let response: ChatMessage;
     try {
-      const result = await chatCompletion(msgs, defs, config);
+      const result = await chatCompletion(msgs, defs, config, { effectiveMaxOutput });
       response = result.message;
       if (result.usage) totalTokens += result.usage.totalTokens;
     } catch (e) {
