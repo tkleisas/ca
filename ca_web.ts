@@ -219,6 +219,7 @@ export async function runWebAgent(
           });
 
           const isError = result.output.startsWith("Error");
+          logToolResult(dbgLog, round, tc.id, name, result.output, isError);
           onEvent({
             type: "tool_result",
             id: tc.id,
