@@ -248,6 +248,9 @@ export async function runWebAgent(
 
   onEvent({ type: "warning", message: `Reached max rounds (${config.maxRounds})` });
   return { messages: msgs, needsRestart: false };
+  } finally {
+    await closeDebugLog();
+  }
 }
 
 // ─── CSS ─────────────────────────────────────────────────
