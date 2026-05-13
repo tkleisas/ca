@@ -129,9 +129,29 @@ tresult PLUGIN_API YawnProcessor::process(ProcessData& data) {
         float* out = data.outputs[0].channelBuffers32[ch];
         auto* model = (ch == 0 || !m_modelRight) ? m_model.get() : m_modelRight.get();
         
-        for (int32 i = 0; i < numSamples; ++i) {
-            // Smooth params (only on first channel to avoid redundant work)
+        // ─── Apply noise gate ─────────────────────────
+        if (ch == 0) {
+            m_gate.processBlock(in, numSamples);
+        } else {
+            // Gate uses same envelope as channel 0
+            for (int32 i = 0; i < numSamples; ++i) in[i] *= 1.0f; // pass
+        }
+        
+        // ─── Oversampling (2x) ────────────────────────
+        const int osFactor = m_useOversampling ? 2 : 1;
+        const int osNumSamples = numSamples * osFactor;
+        std::vector<float> osBuffer(m_useOversampling ? osNumSamples : 0);
+        float* procBuf = in;
+        
+        if (m_useOversampling) {
+            m_oversampler.upsample(in, osBuffer.data(), numSamples);
+            procBuf = osBuffer.data();
+        }
+        
+        // ─── Amp model ────────────────────────────────
+        for (int32 i = 0; i < (m_useOversampling ? osNumSamples : numSamples); ++i) {
             if (ch == 0) {
+                // Smooth parameters
                 m_currentInputGain += m_smoothCoeff * (targetInputGain - m_currentInputGain);
                 m_currentOutputLevel += m_smoothCoeff * (targetOutputLevel - m_currentOutputLevel);
                 m_currentBass += m_smoothCoeff * (targetBass - m_currentBass);
@@ -153,9 +173,21 @@ tresult PLUGIN_API YawnProcessor::process(ProcessData& data) {
                 }
             }
             
-            float sample = in[i];
+            float sample = procBuf[i];
             sample *= m_currentInputGain;
             sample = model->process(sample);
+            procBuf[i] = sample;
+        }
+        
+        // ─── Downsample ───────────────────────────────
+        if (m_useOversampling) {
+            m_oversampler.downsample(procBuf, out, numSamples);
+        }
+        
+        // ─── Cabinet IR + output ──────────────────────
+        for (int32 i = 0; i < numSamples; ++i) {
+            float sample = (m_useOversampling) ? out[i] : procBuf[i];
+            sample = m_cab.process(sample);
             sample *= m_currentOutputLevel;
             sample = std::tanh(sample);
             out[i] = sample;
