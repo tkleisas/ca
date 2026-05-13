@@ -135,6 +135,8 @@ export async function runWebAgent(
     const availableHeadroom = Math.max(0, config.maxTokens - estTokens);
     const effectiveMaxOutput = Math.max(1, Math.min(config.maxOutputTokens, availableHeadroom));
 
+    logRound(dbgLog, round, config.maxRounds, estTokens, config.maxTokens, effectiveMaxOutput);
+
     onEvent({ type: "thinking", round, maxRounds: config.maxRounds });
 
     let response: ChatMessage;
