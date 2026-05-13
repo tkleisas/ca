@@ -207,6 +207,7 @@ export async function runWebAgent(
           }
 
           onEvent({ type: "tool_call", id: tc.id, name, args });
+          logToolCall(dbgLog, round, tc.id, name, args);
 
           const result = await executeTool(name, args, {
             sandbox: config.sandbox,
