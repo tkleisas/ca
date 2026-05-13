@@ -74,6 +74,7 @@ export async function chatCompletion(
         method: "POST",
         headers,
         body: JSON.stringify(body),
+        signal: opts?.signal,
       });
 
       if (!response.ok) {
@@ -89,6 +90,7 @@ export async function chatCompletion(
       const message = sanitizeMessages([data.choices[0].message as ChatMessage])[0];
       return { message, usage: parseUsage(data) };
     } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") throw e;
       if (attempt === maxRetries - 1 || !isRetryableError(e)) throw e;
       await waitForRetry(attempt);
     }
