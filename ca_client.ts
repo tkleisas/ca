@@ -293,11 +293,12 @@ function buildRequestBody(
   messages: ChatMessage[],
   tools: ToolDef[],
   config: AgentConfig,
+  effectiveMaxOutput?: number,
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: config.model,
     messages: sanitizeMessages(messages),
-    max_tokens: config.maxOutputTokens,
+    max_tokens: effectiveMaxOutput ?? config.maxOutputTokens,
     temperature: config.temperature,
     tools,
   };
