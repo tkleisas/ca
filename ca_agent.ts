@@ -404,6 +404,7 @@ export async function run(
 
           const elapsed = ((Date.now() - roundStart) / 1000).toFixed(1);
           console.error(formatToolResult(result.output, elapsed));
+          logToolResult(dbgLog, round, tc.id, name, result.output, result.output.startsWith("Error"));
 
           return { tc, result: result.output };
         }),
