@@ -463,10 +463,13 @@ export async function run(
       }
       return { messages: msgs, needsRestart: false };
     }
-  }
+    }
 
-  console.error(`${colorize("⚠", dim(""))} Reached max rounds (${config.maxRounds})`);
-  return { messages: msgs, needsRestart: false };
+    console.error(`${colorize("⚠", dim(""))} Reached max rounds (${config.maxRounds})`);
+    return { messages: msgs, needsRestart: false };
+  } finally {
+    await closeDebugLog();
+  }
 }
 
 // ─── Conversation Save/Load ────────────────────────────
