@@ -67,10 +67,17 @@ tresult PLUGIN_API YawnProcessor::setupProcessing(ProcessSetup& setup) {
 
 tresult PLUGIN_API YawnProcessor::setActive(TBool state) {
     if (state) {
-        // Reset smoothing state
+        // Reset all smoothing state to avoid glitches on reactivation
         m_currentInputGain = m_params[kParamInputGain];
         m_currentOutputLevel = m_params[kParamOutputLevel];
-        m_currentTone = m_params[kParamTone];
+        m_currentBass = m_params[kParamBass];
+        m_currentMid = m_params[kParamMid];
+        m_currentTreble = m_params[kParamTreble];
+        m_currentPresence = m_params[kParamPresence];
+        m_currentMaster = m_params[kParamMaster];
+        m_lastBass = m_lastMid = -1.0f;
+        m_lastTreble = m_lastPresence = -1.0f;
+        m_lastMaster = -1.0f;
     }
     return AudioEffect::setActive(state);
 }
