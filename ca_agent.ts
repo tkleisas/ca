@@ -299,8 +299,11 @@ export async function run(
       console.error(
         `${colorize("🔄", C.yellow)} ${bold("Context compaction triggered")} — ${tokenPct}% utilization (${estTokens.toLocaleString()} tokens)`,
       );
+      const preCount = msgs.length;
+      const preTokens = estTokens;
       const result = compactConversation(msgs);
       if (result.compacted) {
+        logCompaction(dbgLog, preCount, preTokens, result.messages.length, estimateMessagesTokens(result.messages));
         // Replace msgs in place
         msgs.length = 0;
         msgs.push(...result.messages);
