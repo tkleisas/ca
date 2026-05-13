@@ -150,6 +150,7 @@ export async function runWebAgent(
         toolCalls: new Map(),
       };
 
+      logMessagesSent(dbgLog, round, msgs);
       for await (const event of chatCompletionStream(msgs, tools, config, { effectiveMaxOutput })) {
         if (event.type === "reasoning") {
           accum.reasoning += event.content!;
@@ -170,6 +171,7 @@ export async function runWebAgent(
           throw new Error(event.error);
         }
       }
+      logResponse(dbgLog, round, response, usage);
 
       // Build the final message
       response = { role: "assistant", content: accum.content || null };
