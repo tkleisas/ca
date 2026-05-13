@@ -171,7 +171,6 @@ export async function runWebAgent(
           throw new Error(event.error);
         }
       }
-      logResponse(dbgLog, round, response, usage);
 
       // Build the final message
       response = { role: "assistant", content: accum.content || null };
@@ -186,7 +185,9 @@ export async function runWebAgent(
       }
 
       if (usage) totalApiTokens += usage.totalTokens;
+      logResponse(dbgLog, round, response, usage);
     } catch (e) {
+      logError(dbgLog, round, `API error: ${(e as Error).message}`);
       onEvent({ type: "error", message: `API error: ${(e as Error).message}` });
       return { messages: msgs, needsRestart: false };
     }
