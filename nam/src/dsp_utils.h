@@ -38,7 +38,8 @@ public:
                 if (idx >= 0 && idx < 2 * n) {
                     sum += m_stuffed[idx] * kHalfBand[j];
                 } else if (idx < 0 && (-idx - 1) < (int)kUpHistory) {
-                    sum += upState[(-idx - 1) % kUpHistory] * kHalfBand[j];
+                    int histIdx = (upPos + idx + kUpHistory) % kUpHistory;
+                    sum += upState[histIdx] * kHalfBand[j];
                 }
             }
             // Store in history for next block
