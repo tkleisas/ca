@@ -81,7 +81,7 @@ export async function runWebAgent(
       return { messages: msgs, needsRestart: false };
     }
 
-    const estTokens = estimateMessagesTokens(msgs);
+    let estTokens = estimateMessagesTokens(msgs);
     onEvent({
       type: "token_update",
       used: estTokens,
@@ -89,7 +89,26 @@ export async function runWebAgent(
       pct: ((estTokens / config.maxTokens) * 100).toFixed(1),
       apiUsed: totalApiTokens,
     });
-    if (estTokens > config.maxTokens * 0.85) {
+
+    // ── Auto-compaction when > 90% context utilization ──
+    if (estTokens > config.maxTokens * 0.9) {
+      onEvent({ type: "warning", message: `Context compaction triggered — ${((estTokens / config.maxTokens) * 100).toFixed(0)}% utilization` });
+      const result = compactConversation(msgs);
+      if (result.compacted) {
+        msgs.length = 0;
+        msgs.push(...result.messages);
+        estTokens = estimateMessagesTokens(msgs);
+        onEvent({
+          type: "token_update",
+          used: estTokens,
+          max: config.maxTokens,
+          pct: ((estTokens / config.maxTokens) * 100).toFixed(1),
+          apiUsed: totalApiTokens,
+        });
+      }
+    }
+
+    if (estTokens > config.maxTokens * 0.85 && estTokens <= config.maxTokens * 0.9) {
       onEvent({
         type: "token_warning",
         used: estTokens,
@@ -101,6 +120,10 @@ export async function runWebAgent(
       onEvent({ type: "error", message: `Token budget exceeded: ~${estTokens} > ${config.maxTokens}` });
       return { messages: msgs, needsRestart: false };
     }
+
+    // ── Auto-adjust max output tokens ──
+    const availableHeadroom = Math.max(0, config.maxTokens - estTokens);
+    const effectiveMaxOutput = Math.max(1, Math.min(config.maxOutputTokens, availableHeadroom));
 
     onEvent({ type: "thinking", round, maxRounds: config.maxRounds });
 
@@ -115,7 +138,7 @@ export async function runWebAgent(
         toolCalls: new Map(),
       };
 
-      for await (const event of chatCompletionStream(msgs, tools, config)) {
+      for await (const event of chatCompletionStream(msgs, tools, config, { effectiveMaxOutput })) {
         if (event.type === "reasoning") {
           accum.reasoning += event.content!;
         } else if (event.type === "content") {
