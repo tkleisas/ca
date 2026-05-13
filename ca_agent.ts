@@ -279,190 +279,190 @@ export async function run(
 
   try {
     for (let round = 1; round <= config.maxRounds; round++) {
-    // Check for abort signal
-    if (opts?.signal?.aborted) {
-      console.error(`\n${colorize("⚠", dim(""))} Aborted by signal.`);
-      break;
-    }
+      // Check for abort signal
+      if (opts?.signal?.aborted) {
+        console.error(`\n${colorize("⚠", dim(""))} Aborted by signal.`);
+        break;
+      }
 
-    // Token budget check (estimated context size) — show when significant
-    let estTokens = estimateMessagesTokens(msgs);
-    const tokenPct = ((estTokens / config.maxTokens) * 100).toFixed(1);
-    if (round === 1 || estTokens > config.maxTokens * 0.3) {
-      const color = estTokens > config.maxTokens * 0.7 ? C.yellow : C.dim;
-      console.error(
-        colorize(`  [context: ${estTokens.toLocaleString()} / ${config.maxTokens.toLocaleString()} (${tokenPct}%)]`, color),
-      );
-    }
-
-    // ── Auto-compaction when > 90% context utilization ──
-    if (estTokens > config.maxTokens * 0.9) {
-      console.error(
-        `${colorize("🔄", C.yellow)} ${bold("Context compaction triggered")} — ${tokenPct}% utilization (${estTokens.toLocaleString()} tokens)`,
-      );
-      const preCount = msgs.length;
-      const preTokens = estTokens;
-      const result = compactConversation(msgs);
-      if (result.compacted) {
-        logCompaction(dbgLog, preCount, preTokens, result.messages.length, estimateMessagesTokens(result.messages));
-        // Replace msgs in place
-        msgs.length = 0;
-        msgs.push(...result.messages);
-        estTokens = estimateMessagesTokens(msgs);
-        const newPct = ((estTokens / config.maxTokens) * 100).toFixed(1);
+      // Token budget check (estimated context size) — show when significant
+      let estTokens = estimateMessagesTokens(msgs);
+      const tokenPct = ((estTokens / config.maxTokens) * 100).toFixed(1);
+      if (round === 1 || estTokens > config.maxTokens * 0.3) {
+        const color = estTokens > config.maxTokens * 0.7 ? C.yellow : C.dim;
         console.error(
-          `  ${colorize("✔", C.green)} ${bold("Compacted:")} ${estTokens.toLocaleString()} tokens (${newPct}%) — ${result.messages.length} messages`,
-        );
-      } else {
-        console.error(
-          `  ${colorize("⚠", C.yellow)} Compaction not possible (too few rounds to summarize)`,
+          colorize(`  [context: ${estTokens.toLocaleString()} / ${config.maxTokens.toLocaleString()} (${tokenPct}%)]`, color),
         );
       }
-    }
 
-    if (estTokens > config.maxTokens * 0.85 && estTokens <= config.maxTokens * 0.9) {
-      console.error(
-        `${colorize("⚠", dim(""))} ${bold("Token budget warning:")} ~${estTokens} estimated tokens (${((estTokens / config.maxTokens) * 100).toFixed(0)}% of ${config.maxTokens})`,
-      );
-    }
-    if (estTokens > config.maxTokens) {
-      console.error(
-        `${colorize("✘", dim(""))} ${bold("Token budget exceeded:")} ~${estTokens} > ${config.maxTokens} max`,
-      );
-      break;
-    }
+      // ── Auto-compaction when > 90% context utilization ──
+      if (estTokens > config.maxTokens * 0.9) {
+        console.error(
+          `${colorize("🔄", C.yellow)} ${bold("Context compaction triggered")} — ${tokenPct}% utilization (${estTokens.toLocaleString()} tokens)`,
+        );
+        const preCount = msgs.length;
+        const preTokens = estTokens;
+        const result = compactConversation(msgs);
+        if (result.compacted) {
+          logCompaction(dbgLog, preCount, preTokens, result.messages.length, estimateMessagesTokens(result.messages));
+          // Replace msgs in place
+          msgs.length = 0;
+          msgs.push(...result.messages);
+          estTokens = estimateMessagesTokens(msgs);
+          const newPct = ((estTokens / config.maxTokens) * 100).toFixed(1);
+          console.error(
+            `  ${colorize("✔", C.green)} ${bold("Compacted:")} ${estTokens.toLocaleString()} tokens (${newPct}%) — ${result.messages.length} messages`,
+          );
+        } else {
+          console.error(
+            `  ${colorize("⚠", C.yellow)} Compaction not possible (too few rounds to summarize)`,
+          );
+        }
+      }
 
-    // ── Auto-adjust max output tokens ──
-    // Ensure max output + current context doesn't exceed maxTokens
-    const availableHeadroom = Math.max(0, config.maxTokens - estTokens);
-    const effectiveMaxOutput = Math.max(1, Math.min(config.maxOutputTokens, availableHeadroom));
-    if (effectiveMaxOutput < config.maxOutputTokens && round === 1) {
-      console.error(
-        dim(`  [max output adjusted: ${effectiveMaxOutput.toLocaleString()} (headroom: ${availableHeadroom.toLocaleString()})]`),
-      );
-    }
+      if (estTokens > config.maxTokens * 0.85 && estTokens <= config.maxTokens * 0.9) {
+        console.error(
+          `${colorize("⚠", dim(""))} ${bold("Token budget warning:")} ~${estTokens} estimated tokens (${((estTokens / config.maxTokens) * 100).toFixed(0)}% of ${config.maxTokens})`,
+        );
+      }
+      if (estTokens > config.maxTokens) {
+        console.error(
+          `${colorize("✘", dim(""))} ${bold("Token budget exceeded:")} ~${estTokens} > ${config.maxTokens} max`,
+        );
+        break;
+      }
 
-    logRound(dbgLog, round, config.maxRounds, estTokens, config.maxTokens, effectiveMaxOutput);
+      // ── Auto-adjust max output tokens ──
+      // Ensure max output + current context doesn't exceed maxTokens
+      const availableHeadroom = Math.max(0, config.maxTokens - estTokens);
+      const effectiveMaxOutput = Math.max(1, Math.min(config.maxOutputTokens, availableHeadroom));
+      if (effectiveMaxOutput < config.maxOutputTokens && round === 1) {
+        console.error(
+          dim(`  [max output adjusted: ${effectiveMaxOutput.toLocaleString()} (headroom: ${availableHeadroom.toLocaleString()})]`),
+        );
+      }
 
-    const roundStart = Date.now();
-    spinner.start(round === 1
-      ? `Round ${round}/${config.maxRounds} — ${config.model}`
-      : `Round ${round}/${config.maxRounds}`);
+      logRound(dbgLog, round, config.maxRounds, estTokens, config.maxTokens, effectiveMaxOutput);
 
-    let response: ChatMessage;
-    let usage;
-    try {
-      logMessagesSent(dbgLog, round, msgs);
-      const result = await chatCompletion(msgs, tools, config, { effectiveMaxOutput });
-      response = result.message;
-      usage = result.usage;
+      const roundStart = Date.now();
+      spinner.start(round === 1
+        ? `Round ${round}/${config.maxRounds} — ${config.model}`
+        : `Round ${round}/${config.maxRounds}`);
+
+      let response: ChatMessage;
+      let usage;
+      try {
+        logMessagesSent(dbgLog, round, msgs);
+        const result = await chatCompletion(msgs, tools, config, { effectiveMaxOutput });
+        response = result.message;
+        usage = result.usage;
+        if (usage) {
+          totalApiTokens += usage.totalTokens;
+        }
+        logResponse(dbgLog, round, response, usage);
+      } catch (e) {
+        logError(dbgLog, round, `API error: ${(e as Error).message}`);
+        spinner.fail(`API error: ${(e as Error).message}`);
+        throw e;
+      }
+
+      msgs.push(response);
+
+      // Show detailed usage for this round
       if (usage) {
-        totalApiTokens += usage.totalTokens;
-      }
-      logResponse(dbgLog, round, response, usage);
-    } catch (e) {
-      logError(dbgLog, round, `API error: ${(e as Error).message}`);
-      spinner.fail(`API error: ${(e as Error).message}`);
-      throw e;
-    }
-
-    msgs.push(response);
-
-    // Show detailed usage for this round
-    if (usage) {
-      console.error(
-        dim(`  [API: ${usage.promptTokens.toLocaleString()} in + ${usage.completionTokens.toLocaleString()} out = ${usage.totalTokens.toLocaleString()} total | session: ${totalApiTokens.toLocaleString()}]`),
-      );
-    }
-
-    if (response.tool_calls?.length) {
-      spinner.stop();
-
-      // Execute tools in parallel
-      const toolResults = await Promise.all(
-        response.tool_calls.map(async (tc) => {
-          const name = tc.function.name;
-          let args: Record<string, unknown> = {};
-          try {
-            args = JSON.parse(tc.function.arguments);
-          } catch {
-            console.error(
-              `${colorize("⚠", dim(""))} Failed to parse arguments for ${name}`,
-            );
-            return {
-              tc,
-              result: `Error: Invalid JSON arguments: ${tc.function.arguments.substring(0, 200)}`,
-            };
-          }
-
-          // Pretty print
-          console.error(`\n${formatToolCall(name, args)}`);
-          logToolCall(dbgLog, round, tc.id, name, args);
-
-          const result = await executeTool(name, args, {
-            sandbox: config.sandbox,
-            approve: config.approve,
-            dryRun: config.dryRun,
-            autoCommit: config.autoCommit,
-            cwd: Deno.cwd(),
-            askUser,
-          });
-
-          const elapsed = ((Date.now() - roundStart) / 1000).toFixed(1);
-          console.error(formatToolResult(result.output, elapsed));
-          logToolResult(dbgLog, round, tc.id, name, result.output, result.output.startsWith("Error"));
-
-          return { tc, result: result.output };
-        }),
-      );
-
-      // Check for errors and collect
-      let hasErrors = false;
-      for (const { tc, result } of toolResults) {
-        msgs.push({
-          role: "tool",
-          tool_call_id: tc.id,
-          content: result,
-        });
-        if (result.startsWith("Error")) {
-          hasErrors = true;
-        }
-      }
-
-      // Check for restart signal
-      for (const { result } of toolResults) {
-        if (result === "RESTART_READY") {
-          spinner.stop();
-          console.error(`\n${colorize("🔄", C.cyan)} ${bold("Restarting with new version...")}`);
-          const resumeFile = `${Deno.cwd()}/.ca_resume.json`;
-          await saveConversation(msgs, resumeFile);
-          return { messages: msgs, needsRestart: true };
-        }
-      }
-
-      // If there were errors, add a hint for the model
-      if (hasErrors) {
         console.error(
-          `  ${colorize("⚠", dim(""))} Some tool calls returned errors — model will attempt recovery`,
+          dim(`  [API: ${usage.promptTokens.toLocaleString()} in + ${usage.completionTokens.toLocaleString()} out = ${usage.totalTokens.toLocaleString()} total | session: ${totalApiTokens.toLocaleString()}]`),
         );
-        // Errors are already in the tool messages, model can recover automatically
       }
 
-      console.error(""); // blank line between rounds
+      if (response.tool_calls?.length) {
+        spinner.stop();
 
-      // If in dry-run mode, stop after one round
-      if (config.dryRun) {
-        spinner.succeed("Dry-run complete (1 round)");
+        // Execute tools in parallel
+        const toolResults = await Promise.all(
+          response.tool_calls.map(async (tc) => {
+            const name = tc.function.name;
+            let args: Record<string, unknown> = {};
+            try {
+              args = JSON.parse(tc.function.arguments);
+            } catch {
+              console.error(
+                `${colorize("⚠", dim(""))} Failed to parse arguments for ${name}`,
+              );
+              return {
+                tc,
+                result: `Error: Invalid JSON arguments: ${tc.function.arguments.substring(0, 200)}`,
+              };
+            }
+
+            // Pretty print
+            console.error(`\n${formatToolCall(name, args)}`);
+            logToolCall(dbgLog, round, tc.id, name, args);
+
+            const result = await executeTool(name, args, {
+              sandbox: config.sandbox,
+              approve: config.approve,
+              dryRun: config.dryRun,
+              autoCommit: config.autoCommit,
+              cwd: Deno.cwd(),
+              askUser,
+            });
+
+            const elapsed = ((Date.now() - roundStart) / 1000).toFixed(1);
+            console.error(formatToolResult(result.output, elapsed));
+            logToolResult(dbgLog, round, tc.id, name, result.output, result.output.startsWith("Error"));
+
+            return { tc, result: result.output };
+          }),
+        );
+
+        // Check for errors and collect
+        let hasErrors = false;
+        for (const { tc, result } of toolResults) {
+          msgs.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: result,
+          });
+          if (result.startsWith("Error")) {
+            hasErrors = true;
+          }
+        }
+
+        // Check for restart signal
+        for (const { result } of toolResults) {
+          if (result === "RESTART_READY") {
+            spinner.stop();
+            console.error(`\n${colorize("🔄", C.cyan)} ${bold("Restarting with new version...")}`);
+            const resumeFile = `${Deno.cwd()}/.ca_resume.json`;
+            await saveConversation(msgs, resumeFile);
+            return { messages: msgs, needsRestart: true };
+          }
+        }
+
+        // If there were errors, add a hint for the model
+        if (hasErrors) {
+          console.error(
+            `  ${colorize("⚠", dim(""))} Some tool calls returned errors — model will attempt recovery`,
+          );
+          // Errors are already in the tool messages, model can recover automatically
+        }
+
+        console.error(""); // blank line between rounds
+
+        // If in dry-run mode, stop after one round
+        if (config.dryRun) {
+          spinner.succeed("Dry-run complete (1 round)");
+          return { messages: msgs, needsRestart: false };
+        }
+      } else {
+        // No tool calls — final response
+        spinner.succeed(`Done (${round} round${round > 1 ? "s" : ""})`);
+        if (response.content) {
+          console.log(response.content);
+        }
         return { messages: msgs, needsRestart: false };
       }
-    } else {
-      // No tool calls — final response
-      spinner.succeed(`Done (${round} round${round > 1 ? "s" : ""})`);
-      if (response.content) {
-        console.log(response.content);
-      }
-      return { messages: msgs, needsRestart: false };
-    }
     }
 
     console.error(`${colorize("⚠", dim(""))} Reached max rounds (${config.maxRounds})`);
