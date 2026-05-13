@@ -279,7 +279,7 @@ export async function run(
     }
 
     // Token budget check (estimated context size) — show when significant
-    const estTokens = estimateMessagesTokens(msgs);
+    let estTokens = estimateMessagesTokens(msgs);
     const tokenPct = ((estTokens / config.maxTokens) * 100).toFixed(1);
     if (round === 1 || estTokens > config.maxTokens * 0.3) {
       const color = estTokens > config.maxTokens * 0.7 ? C.yellow : C.dim;
@@ -287,7 +287,30 @@ export async function run(
         colorize(`  [context: ${estTokens.toLocaleString()} / ${config.maxTokens.toLocaleString()} (${tokenPct}%)]`, color),
       );
     }
-    if (estTokens > config.maxTokens * 0.85) {
+
+    // ── Auto-compaction when > 90% context utilization ──
+    if (estTokens > config.maxTokens * 0.9) {
+      console.error(
+        `${colorize("🔄", C.yellow)} ${bold("Context compaction triggered")} — ${tokenPct}% utilization (${estTokens.toLocaleString()} tokens)`,
+      );
+      const result = compactConversation(msgs);
+      if (result.compacted) {
+        // Replace msgs in place
+        msgs.length = 0;
+        msgs.push(...result.messages);
+        estTokens = estimateMessagesTokens(msgs);
+        const newPct = ((estTokens / config.maxTokens) * 100).toFixed(1);
+        console.error(
+          `  ${colorize("✔", C.green)} ${bold("Compacted:")} ${estTokens.toLocaleString()} tokens (${newPct}%) — ${result.messages.length} messages`,
+        );
+      } else {
+        console.error(
+          `  ${colorize("⚠", C.yellow)} Compaction not possible (too few rounds to summarize)`,
+        );
+      }
+    }
+
+    if (estTokens > config.maxTokens * 0.85 && estTokens <= config.maxTokens * 0.9) {
       console.error(
         `${colorize("⚠", dim(""))} ${bold("Token budget warning:")} ~${estTokens} estimated tokens (${((estTokens / config.maxTokens) * 100).toFixed(0)}% of ${config.maxTokens})`,
       );
@@ -299,6 +322,16 @@ export async function run(
       break;
     }
 
+    // ── Auto-adjust max output tokens ──
+    // Ensure max output + current context doesn't exceed maxTokens
+    const availableHeadroom = Math.max(0, config.maxTokens - estTokens);
+    const effectiveMaxOutput = Math.max(1, Math.min(config.maxOutputTokens, availableHeadroom));
+    if (effectiveMaxOutput < config.maxOutputTokens && round === 1) {
+      console.error(
+        dim(`  [max output adjusted: ${effectiveMaxOutput.toLocaleString()} (headroom: ${availableHeadroom.toLocaleString()})]`),
+      );
+    }
+
     const roundStart = Date.now();
     spinner.start(round === 1
       ? `Round ${round}/${config.maxRounds} — ${config.model}`
@@ -307,7 +340,7 @@ export async function run(
     let response: ChatMessage;
     let usage;
     try {
-      const result = await chatCompletion(msgs, tools, config);
+      const result = await chatCompletion(msgs, tools, config, { effectiveMaxOutput });
       response = result.message;
       usage = result.usage;
       if (usage) {
