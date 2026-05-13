@@ -133,6 +133,7 @@ export async function* chatCompletionStream(
         method: "POST",
         headers,
         body: JSON.stringify(body),
+        signal: opts?.signal,
       });
 
       if (!response.ok) {
@@ -165,6 +166,11 @@ export async function* chatCompletionStream(
 
       try {
         while (true) {
+          if (opts?.signal?.aborted) {
+            reader.cancel();
+            yield { type: "error", error: "Aborted" };
+            return;
+          }
           const { done, value } = await reader.read();
           if (done) break;
 
