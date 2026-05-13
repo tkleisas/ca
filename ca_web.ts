@@ -100,8 +100,11 @@ export async function runWebAgent(
     // ── Auto-compaction when > 90% context utilization ──
     if (estTokens > config.maxTokens * 0.9) {
       onEvent({ type: "warning", message: `Context compaction triggered — ${((estTokens / config.maxTokens) * 100).toFixed(0)}% utilization` });
+      const preCount = msgs.length;
+      const preTokens = estTokens;
       const result = compactConversation(msgs);
       if (result.compacted) {
+        logCompaction(dbgLog, preCount, preTokens, result.messages.length, estimateMessagesTokens(result.messages));
         msgs.length = 0;
         msgs.push(...result.messages);
         estTokens = estimateMessagesTokens(msgs);
