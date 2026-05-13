@@ -341,6 +341,8 @@ export async function run(
       );
     }
 
+    logRound(dbgLog, round, config.maxRounds, estTokens, config.maxTokens, effectiveMaxOutput);
+
     const roundStart = Date.now();
     spinner.start(round === 1
       ? `Round ${round}/${config.maxRounds} — ${config.model}`
