@@ -56,7 +56,14 @@ public:
 
 private:
     std::unique_ptr<NamModel> m_model;
-    std::unique_ptr<NamModel> m_modelRight; // second model for stereo (or nullptr = mono)
+    std::unique_ptr<NamModel> m_modelRight;
+    
+    // DSP chain
+    dsp::NoiseGate m_gate;
+    dsp::OverSampler2x m_oversampler;
+    dsp::CabSim m_cab;
+    bool m_useOversampling = true;
+    
     double m_sampleRate = 48000.0;
     bool m_isStereo = false;
     float m_params[kNumParams] = {};
