@@ -82,182 +82,182 @@ export async function runWebAgent(
   let totalApiTokens = 0; // actual tokens from API responses
 
   try {
-  for (let round = 1; round <= config.maxRounds; round++) {
-    if (signal?.aborted) {
-      onEvent({ type: "aborted" });
-      return { messages: msgs, needsRestart: false };
-    }
-
-    let estTokens = estimateMessagesTokens(msgs);
-    onEvent({
-      type: "token_update",
-      used: estTokens,
-      max: config.maxTokens,
-      pct: ((estTokens / config.maxTokens) * 100).toFixed(1),
-      apiUsed: totalApiTokens,
-    });
-
-    // ── Auto-compaction when > 90% context utilization ──
-    if (estTokens > config.maxTokens * 0.9) {
-      onEvent({ type: "warning", message: `Context compaction triggered — ${((estTokens / config.maxTokens) * 100).toFixed(0)}% utilization` });
-      const preCount = msgs.length;
-      const preTokens = estTokens;
-      const result = compactConversation(msgs);
-      if (result.compacted) {
-        logCompaction(dbgLog, preCount, preTokens, result.messages.length, estimateMessagesTokens(result.messages));
-        msgs.length = 0;
-        msgs.push(...result.messages);
-        estTokens = estimateMessagesTokens(msgs);
-        onEvent({
-          type: "token_update",
-          used: estTokens,
-          max: config.maxTokens,
-          pct: ((estTokens / config.maxTokens) * 100).toFixed(1),
-          apiUsed: totalApiTokens,
-        });
+    for (let round = 1; round <= config.maxRounds; round++) {
+      if (signal?.aborted) {
+        onEvent({ type: "aborted" });
+        return { messages: msgs, needsRestart: false };
       }
-    }
 
-    if (estTokens > config.maxTokens * 0.85 && estTokens <= config.maxTokens * 0.9) {
+      let estTokens = estimateMessagesTokens(msgs);
       onEvent({
-        type: "token_warning",
+        type: "token_update",
         used: estTokens,
         max: config.maxTokens,
-        pct: ((estTokens / config.maxTokens) * 100).toFixed(0),
+        pct: ((estTokens / config.maxTokens) * 100).toFixed(1),
+        apiUsed: totalApiTokens,
       });
-    }
-    if (estTokens > config.maxTokens) {
-      onEvent({ type: "error", message: `Token budget exceeded: ~${estTokens} > ${config.maxTokens}` });
-      return { messages: msgs, needsRestart: false };
-    }
 
-    // ── Auto-adjust max output tokens ──
-    const availableHeadroom = Math.max(0, config.maxTokens - estTokens);
-    const effectiveMaxOutput = Math.max(1, Math.min(config.maxOutputTokens, availableHeadroom));
-
-    logRound(dbgLog, round, config.maxRounds, estTokens, config.maxTokens, effectiveMaxOutput);
-
-    onEvent({ type: "thinking", round, maxRounds: config.maxRounds });
-
-    let response: ChatMessage;
-    let usage: UsageInfo | undefined;
-
-    try {
-      // Use streaming to get real-time content updates
-      const accum: { content: string; reasoning: string; toolCalls: Map<number, { id: string; name: string; args: string }> } = {
-        content: "",
-        reasoning: "",
-        toolCalls: new Map(),
-      };
-
-      logMessagesSent(dbgLog, round, msgs);
-      for await (const event of chatCompletionStream(msgs, tools, config, { effectiveMaxOutput })) {
-        if (event.type === "reasoning") {
-          accum.reasoning += event.content!;
-        } else if (event.type === "content") {
-          accum.content += event.content!;
-          onEvent({ type: "assistant_text", content: event.content! });
-        } else if (event.type === "tool_call_start") {
-          const tc = accum.toolCalls.get(event.toolIndex!) ?? { id: "", name: "", args: "" };
-          tc.id = event.toolId!;
-          tc.name = event.toolName ?? "";
-          accum.toolCalls.set(event.toolIndex!, tc);
-        } else if (event.type === "tool_call_delta") {
-          const tc = accum.toolCalls.get(event.toolIndex!);
-          if (tc) tc.args += event.toolArgs!;
-        } else if (event.type === "done") {
-          usage = event.usage;
-        } else if (event.type === "error") {
-          throw new Error(event.error);
-        }
-      }
-
-      // Build the final message
-      response = { role: "assistant", content: accum.content || null };
-      if (accum.reasoning) response.reasoning_content = accum.reasoning;
-      const toolCallsArr = [...accum.toolCalls.values()].filter((tc) => tc.id);
-      if (toolCallsArr.length > 0) {
-        response.tool_calls = toolCallsArr.map((tc) => ({
-          id: tc.id,
-          type: "function" as const,
-          function: { name: tc.name, arguments: tc.args },
-        }));
-      }
-
-      if (usage) totalApiTokens += usage.totalTokens;
-      logResponse(dbgLog, round, response, usage);
-    } catch (e) {
-      logError(dbgLog, round, `API error: ${(e as Error).message}`);
-      onEvent({ type: "error", message: `API error: ${(e as Error).message}` });
-      return { messages: msgs, needsRestart: false };
-    }
-
-    msgs.push(response);
-
-    if (response.tool_calls?.length) {
-      const toolResults = await Promise.all(
-        response.tool_calls.map(async (tc) => {
-          const name = tc.function.name;
-          let args: Record<string, unknown> = {};
-          try {
-            args = JSON.parse(tc.function.arguments);
-          } catch {
-            onEvent({ type: "tool_error", id: tc.id, name, message: `Invalid JSON: ${tc.function.arguments.substring(0, 200)}` });
-            return { tc, result: `Error: Invalid JSON arguments: ${tc.function.arguments.substring(0, 200)}` };
-          }
-
-          onEvent({ type: "tool_call", id: tc.id, name, args });
-          logToolCall(dbgLog, round, tc.id, name, args);
-
-          const result = await executeTool(name, args, {
-            sandbox: config.sandbox,
-            approve: config.approve,
-            dryRun: config.dryRun,
-            autoCommit: config.autoCommit,
-            cwd: Deno.cwd(),
-            askUser: undefined, // No interactive ask_user in web mode
-          });
-
-          const isError = result.output.startsWith("Error");
-          logToolResult(dbgLog, round, tc.id, name, result.output, isError);
+      // ── Auto-compaction when > 90% context utilization ──
+      if (estTokens > config.maxTokens * 0.9) {
+        onEvent({ type: "warning", message: `Context compaction triggered — ${((estTokens / config.maxTokens) * 100).toFixed(0)}% utilization` });
+        const preCount = msgs.length;
+        const preTokens = estTokens;
+        const result = compactConversation(msgs);
+        if (result.compacted) {
+          logCompaction(dbgLog, preCount, preTokens, result.messages.length, estimateMessagesTokens(result.messages));
+          msgs.length = 0;
+          msgs.push(...result.messages);
+          estTokens = estimateMessagesTokens(msgs);
           onEvent({
-            type: "tool_result",
-            id: tc.id,
-            name,
-            result: result.output,
-            error: isError,
-            diff: result.diff,
+            type: "token_update",
+            used: estTokens,
+            max: config.maxTokens,
+            pct: ((estTokens / config.maxTokens) * 100).toFixed(1),
+            apiUsed: totalApiTokens,
           });
-
-          return { tc, result: result.output };
-        }),
-      );
-
-      for (const { tc, result } of toolResults) {
-        msgs.push({ role: "tool", tool_call_id: tc.id, content: result });
-        if (result === "RESTART_READY") {
-          const resumeFile = `${Deno.cwd()}/.ca_resume.json`;
-          await saveConversation(msgs, resumeFile);
-          onEvent({ type: "restart" });
-          return { messages: msgs, needsRestart: true };
         }
       }
 
-      if (config.dryRun) {
+      if (estTokens > config.maxTokens * 0.85 && estTokens <= config.maxTokens * 0.9) {
+        onEvent({
+          type: "token_warning",
+          used: estTokens,
+          max: config.maxTokens,
+          pct: ((estTokens / config.maxTokens) * 100).toFixed(0),
+        });
+      }
+      if (estTokens > config.maxTokens) {
+        onEvent({ type: "error", message: `Token budget exceeded: ~${estTokens} > ${config.maxTokens}` });
+        return { messages: msgs, needsRestart: false };
+      }
+
+      // ── Auto-adjust max output tokens ──
+      const availableHeadroom = Math.max(0, config.maxTokens - estTokens);
+      const effectiveMaxOutput = Math.max(1, Math.min(config.maxOutputTokens, availableHeadroom));
+
+      logRound(dbgLog, round, config.maxRounds, estTokens, config.maxTokens, effectiveMaxOutput);
+
+      onEvent({ type: "thinking", round, maxRounds: config.maxRounds });
+
+      let response: ChatMessage;
+      let usage: UsageInfo | undefined;
+
+      try {
+        // Use streaming to get real-time content updates
+        const accum: { content: string; reasoning: string; toolCalls: Map<number, { id: string; name: string; args: string }> } = {
+          content: "",
+          reasoning: "",
+          toolCalls: new Map(),
+        };
+
+        logMessagesSent(dbgLog, round, msgs);
+        for await (const event of chatCompletionStream(msgs, tools, config, { effectiveMaxOutput })) {
+          if (event.type === "reasoning") {
+            accum.reasoning += event.content!;
+          } else if (event.type === "content") {
+            accum.content += event.content!;
+            onEvent({ type: "assistant_text", content: event.content! });
+          } else if (event.type === "tool_call_start") {
+            const tc = accum.toolCalls.get(event.toolIndex!) ?? { id: "", name: "", args: "" };
+            tc.id = event.toolId!;
+            tc.name = event.toolName ?? "";
+            accum.toolCalls.set(event.toolIndex!, tc);
+          } else if (event.type === "tool_call_delta") {
+            const tc = accum.toolCalls.get(event.toolIndex!);
+            if (tc) tc.args += event.toolArgs!;
+          } else if (event.type === "done") {
+            usage = event.usage;
+          } else if (event.type === "error") {
+            throw new Error(event.error);
+          }
+        }
+
+        // Build the final message
+        response = { role: "assistant", content: accum.content || null };
+        if (accum.reasoning) response.reasoning_content = accum.reasoning;
+        const toolCallsArr = [...accum.toolCalls.values()].filter((tc) => tc.id);
+        if (toolCallsArr.length > 0) {
+          response.tool_calls = toolCallsArr.map((tc) => ({
+            id: tc.id,
+            type: "function" as const,
+            function: { name: tc.name, arguments: tc.args },
+          }));
+        }
+
+        if (usage) totalApiTokens += usage.totalTokens;
+        logResponse(dbgLog, round, response, usage);
+      } catch (e) {
+        logError(dbgLog, round, `API error: ${(e as Error).message}`);
+        onEvent({ type: "error", message: `API error: ${(e as Error).message}` });
+        return { messages: msgs, needsRestart: false };
+      }
+
+      msgs.push(response);
+
+      if (response.tool_calls?.length) {
+        const toolResults = await Promise.all(
+          response.tool_calls.map(async (tc) => {
+            const name = tc.function.name;
+            let args: Record<string, unknown> = {};
+            try {
+              args = JSON.parse(tc.function.arguments);
+            } catch {
+              onEvent({ type: "tool_error", id: tc.id, name, message: `Invalid JSON: ${tc.function.arguments.substring(0, 200)}` });
+              return { tc, result: `Error: Invalid JSON arguments: ${tc.function.arguments.substring(0, 200)}` };
+            }
+
+            onEvent({ type: "tool_call", id: tc.id, name, args });
+            logToolCall(dbgLog, round, tc.id, name, args);
+
+            const result = await executeTool(name, args, {
+              sandbox: config.sandbox,
+              approve: config.approve,
+              dryRun: config.dryRun,
+              autoCommit: config.autoCommit,
+              cwd: Deno.cwd(),
+              askUser: undefined, // No interactive ask_user in web mode
+            });
+
+            const isError = result.output.startsWith("Error");
+            logToolResult(dbgLog, round, tc.id, name, result.output, isError);
+            onEvent({
+              type: "tool_result",
+              id: tc.id,
+              name,
+              result: result.output,
+              error: isError,
+              diff: result.diff,
+            });
+
+            return { tc, result: result.output };
+          }),
+        );
+
+        for (const { tc, result } of toolResults) {
+          msgs.push({ role: "tool", tool_call_id: tc.id, content: result });
+          if (result === "RESTART_READY") {
+            const resumeFile = `${Deno.cwd()}/.ca_resume.json`;
+            await saveConversation(msgs, resumeFile);
+            onEvent({ type: "restart" });
+            return { messages: msgs, needsRestart: true };
+          }
+        }
+
+        if (config.dryRun) {
+          onEvent({ type: "done", rounds: round, usage });
+          return { messages: msgs, needsRestart: false };
+        }
+      } else {
+        if (response.content) {
+          // Final content already streamed; just send done
+        }
         onEvent({ type: "done", rounds: round, usage });
         return { messages: msgs, needsRestart: false };
       }
-    } else {
-      if (response.content) {
-        // Final content already streamed; just send done
-      }
-      onEvent({ type: "done", rounds: round, usage });
-      return { messages: msgs, needsRestart: false };
     }
-  }
 
-  onEvent({ type: "warning", message: `Reached max rounds (${config.maxRounds})` });
-  return { messages: msgs, needsRestart: false };
+    onEvent({ type: "warning", message: `Reached max rounds (${config.maxRounds})` });
+    return { messages: msgs, needsRestart: false };
   } finally {
     await closeDebugLog();
   }
