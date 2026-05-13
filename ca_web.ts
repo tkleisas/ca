@@ -196,8 +196,17 @@ export async function runWebAgent(
         if (usage) totalApiTokens += usage.totalTokens;
         logResponse(dbgLog, round, response, usage);
       } catch (e) {
+        if (e instanceof Error && e.name === "AbortError") {
+          onEvent({ type: "aborted" });
+          return { messages: msgs, needsRestart: false };
+        }
         logError(dbgLog, round, `API error: ${(e as Error).message}`);
         onEvent({ type: "error", message: `API error: ${(e as Error).message}` });
+        return { messages: msgs, needsRestart: false };
+      }
+
+      if (signal?.aborted) {
+        onEvent({ type: "aborted" });
         return { messages: msgs, needsRestart: false };
       }
 
