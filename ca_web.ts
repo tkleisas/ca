@@ -74,8 +74,14 @@ export async function runWebAgent(
 
   msgs.push({ role: "user", content: prompt });
 
+  // ── Debug logging ──
+  const cwd = Deno.cwd();
+  const dbgLog = await initDebugLog(cwd);
+  logSessionStart(dbgLog, config.model, config.apiBase, config.maxTokens, config.maxOutputTokens, cwd);
+
   let totalApiTokens = 0; // actual tokens from API responses
 
+  try {
   for (let round = 1; round <= config.maxRounds; round++) {
     if (signal?.aborted) {
       onEvent({ type: "aborted" });
