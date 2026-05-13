@@ -40,7 +40,9 @@ Guidelines:
 - Use search_files to find patterns, references, and definitions
 - Use list_directory to understand project structure
 - Use ask_user when you need clarification on ambiguous requests
-- Use apply_diff for small targeted edits instead of rewriting entire files`;
+- Use apply_diff for small targeted edits instead of rewriting entire files
+
+CRITICAL: Always complete the task fully. Do NOT stop to ask if you should continue — just keep working until the task is done and verified. Only stop when you have actually finished everything requested.`;
 
   if (config.approve) {
     prompt += `\n\nApproval mode is active. You must get user confirmation before write_file, run_command (dangerous), and apply_diff operations.`;

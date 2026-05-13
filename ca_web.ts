@@ -1736,8 +1736,13 @@ export function startWebServer(config: AgentConfig, port: number): WebServerHand
           }
         };
 
-        socket.onclose = () => {};
-        socket.onerror = (e) => { console.error("WebSocket error:", e); };
+        socket.onclose = () => {
+          if (agentAbort) { agentAbort.abort(); agentAbort = null; }
+        };
+        socket.onerror = (e) => {
+          console.error("WebSocket error:", e);
+          if (agentAbort) { agentAbort.abort(); agentAbort = null; }
+        };
         return response;
       }
 
