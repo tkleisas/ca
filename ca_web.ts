@@ -151,7 +151,8 @@ export async function runWebAgent(
         };
 
         logMessagesSent(dbgLog, round, msgs);
-        for await (const event of chatCompletionStream(msgs, tools, config, { effectiveMaxOutput })) {
+        for await (const event of chatCompletionStream(msgs, tools, config, { effectiveMaxOutput, signal })) {
+          if (signal?.aborted) break;
           if (event.type === "reasoning") {
             accum.reasoning += event.content!;
           } else if (event.type === "content") {
@@ -168,8 +169,16 @@ export async function runWebAgent(
           } else if (event.type === "done") {
             usage = event.usage;
           } else if (event.type === "error") {
+            if (event.error === "Aborted") {
+              onEvent({ type: "aborted" });
+              return { messages: msgs, needsRestart: false };
+            }
             throw new Error(event.error);
           }
+        }
+        if (signal?.aborted) {
+          onEvent({ type: "aborted" });
+          return { messages: msgs, needsRestart: false };
         }
 
         // Build the final message
