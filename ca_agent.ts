@@ -346,13 +346,16 @@ export async function run(
     let response: ChatMessage;
     let usage;
     try {
+      logMessagesSent(dbgLog, round, msgs);
       const result = await chatCompletion(msgs, tools, config, { effectiveMaxOutput });
       response = result.message;
       usage = result.usage;
       if (usage) {
         totalApiTokens += usage.totalTokens;
       }
+      logResponse(dbgLog, round, response, usage);
     } catch (e) {
+      logError(dbgLog, round, `API error: ${(e as Error).message}`);
       spinner.fail(`API error: ${(e as Error).message}`);
       throw e;
     }
