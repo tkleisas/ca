@@ -23,23 +23,26 @@ public:
     
     // Upsample: in[0..n-1] → out[0..2n-1] (interleaved zeros + filter)
     void upsample(const float* in, float* out, int n) {
+        // Build zero-stuffed buffer in temp storage (out is modified in-place
+        // by the filter, so we must read original values from a separate buffer)
+        float stuffed[512]; // max 256 input samples → 512 stuffed
         for (int i = 0; i < n; ++i) {
-            out[i * 2] = in[i];
-            out[i * 2 + 1] = 0.0f;
+            stuffed[i * 2] = in[i];
+            stuffed[i * 2 + 1] = 0.0f;
         }
-        // Apply anti-imaging filter
+        // Apply anti-imaging filter — read from stuffed, write to out
         for (int i = 0; i < 2 * n; ++i) {
             float sum = 0.0f;
             for (int j = 0; j < kTaps; ++j) {
                 int idx = i - j;
                 if (idx >= 0 && idx < 2 * n) {
-                    sum += out[idx] * kHalfBand[j];
+                    sum += stuffed[idx] * kHalfBand[j];
                 } else if (idx < 0 && (-idx - 1) < (int)kUpHistory) {
                     sum += upState[(-idx - 1) % kUpHistory] * kHalfBand[j];
                 }
             }
-            // Store for future
-            upState[upPos] = (i >= 2 * n) ? 0.0f : out[i];
+            // Store in history for next block
+            upState[upPos] = stuffed[i];
             upPos = (upPos + 1) % kUpHistory;
             out[i] = sum * 2.0f; // compensate for zero-stuffing gain
         }
