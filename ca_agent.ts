@@ -1,7 +1,7 @@
 import type { ChatMessage, ConversationExport, AgentConfig, SubagentInput, SubagentResult } from "./ca_types.ts";
 import { VERSION } from "./ca_types.ts";
 import { buildToolDefs, executeTool, type AskUserCallback } from "./ca_tools.ts";
-import { chatCompletion, estimateMessagesTokens } from "./ca_client.ts";
+import { chatCompletion, estimateMessagesTokens, type CompletionOpts } from "./ca_client.ts";
 import { C, Spinner, formatToolCall, formatToolResult, colorize, dim, bold } from "./ca_ui.ts";
 import { sandboxContext } from "./ca_sandbox.ts";
 
