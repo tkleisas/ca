@@ -277,7 +277,8 @@ export async function run(
   const spinner = new Spinner();
   let totalApiTokens = 0; // actual tokens from API responses
 
-  for (let round = 1; round <= config.maxRounds; round++) {
+  try {
+    for (let round = 1; round <= config.maxRounds; round++) {
     // Check for abort signal
     if (opts?.signal?.aborted) {
       console.error(`\n${colorize("⚠", dim(""))} Aborted by signal.`);
