@@ -54,6 +54,7 @@ export interface CompletionResult {
 
 export interface CompletionOpts {
   effectiveMaxOutput?: number; // override config.maxOutputTokens per-call
+  signal?: AbortSignal;       // abort the API request
 }
 
 export async function chatCompletion(
