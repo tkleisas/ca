@@ -25,10 +25,10 @@ public:
     void upsample(const float* in, float* out, int n) {
         // Build zero-stuffed buffer in temp storage (out is modified in-place
         // by the filter, so we must read original values from a separate buffer)
-        float stuffed[512]; // max 256 input samples → 512 stuffed
+        m_stuffed.resize(2 * n);
         for (int i = 0; i < n; ++i) {
-            stuffed[i * 2] = in[i];
-            stuffed[i * 2 + 1] = 0.0f;
+            m_stuffed[i * 2] = in[i];
+            m_stuffed[i * 2 + 1] = 0.0f;
         }
         // Apply anti-imaging filter — read from stuffed, write to out
         for (int i = 0; i < 2 * n; ++i) {
@@ -36,13 +36,13 @@ public:
             for (int j = 0; j < kTaps; ++j) {
                 int idx = i - j;
                 if (idx >= 0 && idx < 2 * n) {
-                    sum += stuffed[idx] * kHalfBand[j];
+                    sum += m_stuffed[idx] * kHalfBand[j];
                 } else if (idx < 0 && (-idx - 1) < (int)kUpHistory) {
                     sum += upState[(-idx - 1) % kUpHistory] * kHalfBand[j];
                 }
             }
             // Store in history for next block
-            upState[upPos] = stuffed[i];
+            upState[upPos] = m_stuffed[i];
             upPos = (upPos + 1) % kUpHistory;
             out[i] = sum * 2.0f; // compensate for zero-stuffing gain
         }
