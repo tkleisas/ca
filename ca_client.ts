@@ -113,10 +113,11 @@ export async function* chatCompletionStream(
   messages: ChatMessage[],
   tools: ToolDef[],
   config: AgentConfig,
+  opts?: CompletionOpts,
 ): AsyncGenerator<StreamEvent> {
   const url = `${config.apiBase}/chat/completions`;
   const body = {
-    ...buildRequestBody(messages, tools, config),
+    ...buildRequestBody(messages, tools, config, opts?.effectiveMaxOutput),
     stream: true,
     stream_options: { include_usage: true },
   };
