@@ -99,6 +99,8 @@ private:
     float upState[kUpHistory] = {};
     float downState[kDownHistory] = {};
     int upPos = 0, downPos = 0;
+    std::vector<float> m_stuffed;  // temp buffer for upsample zero-stuffed input
+    std::vector<float> m_temp;     // temp buffer for downsample filter output
 };
 
 // ─── Noise Gate ──────────────────────────────────────
