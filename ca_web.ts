@@ -266,6 +266,34 @@ export async function runWebAgent(
           return { messages: msgs, needsRestart: false };
         }
       } else {
+        // No tool calls — check if model seems to be waiting for user input
+        const text = (response.content ?? "").toLowerCase();
+        const waitingPatterns = [
+          "would you like me to",
+          "should i continue",
+          "let me know if",
+          "do you want me to",
+          "shall i ",
+          "would you like",
+          "please confirm",
+          "should i proceed",
+          "want me to",
+          "ready for me to",
+          "ok to ",
+          "is that ok",
+        ];
+        const isWaiting = waitingPatterns.some(p => text.includes(p)) ||
+          (text.trim().endsWith("?") && text.length < 300);
+        
+        if (isWaiting && round < config.maxRounds) {
+          onEvent({ type: "warning", message: "Continuing task..." });
+          msgs.push({
+            role: "user",
+            content: "Continue working on the task. Complete it fully — do not ask for confirmation, just finish the work and verify it.",
+          });
+          continue;
+        }
+
         if (response.content) {
           // Final content already streamed; just send done
         }
