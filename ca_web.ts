@@ -1280,6 +1280,9 @@ function sendMessage() {
 }
 
 function abortAgent() {
+  const btn = document.getElementById("abort-btn");
+  btn.textContent = "Stopping…";
+  btn.disabled = true;
   ws.send(JSON.stringify({ type: "abort" }));
 }
 
