@@ -62,13 +62,14 @@ public:
                 if (idx >= 0 && idx < tempLen) {
                     sum += in[idx] * kHalfBand[j];
                 } else if (idx < 0 && (-idx - 1) < (int)kDownHistory) {
-                    sum += downState[(-idx - 1) % kDownHistory] * kHalfBand[j];
+                    int histIdx = (downPos + idx + kDownHistory) % kDownHistory;
+                    sum += downState[histIdx] * kHalfBand[j];
                 }
             }
             m_temp[i] = sum;
         }
         
-        // Update history
+        // Update history — store most recent samples first
         for (int i = 0; i < std::min(tempLen, (int)kDownHistory); ++i) {
             downState[(downPos + i) % kDownHistory] = in[tempLen - 1 - i];
         }
