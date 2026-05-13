@@ -52,13 +52,18 @@ export interface CompletionResult {
   usage?: UsageInfo;
 }
 
+export interface CompletionOpts {
+  effectiveMaxOutput?: number; // override config.maxOutputTokens per-call
+}
+
 export async function chatCompletion(
   messages: ChatMessage[],
   tools: ToolDef[],
   config: AgentConfig,
+  opts?: CompletionOpts,
 ): Promise<CompletionResult> {
   const url = `${config.apiBase}/chat/completions`;
-  const body = buildRequestBody(messages, tools, config);
+  const body = buildRequestBody(messages, tools, config, opts?.effectiveMaxOutput);
   const headers = buildApiHeaders(config);
   const maxRetries = config.maxRetries;
 
