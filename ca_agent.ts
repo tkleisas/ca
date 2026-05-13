@@ -391,6 +391,7 @@ export async function run(
 
           // Pretty print
           console.error(`\n${formatToolCall(name, args)}`);
+          logToolCall(dbgLog, round, tc.id, name, args);
 
           const result = await executeTool(name, args, {
             sandbox: config.sandbox,
