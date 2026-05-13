@@ -50,8 +50,8 @@ public:
     
     // Downsample: in[0..2n-1] → out[0..n-1] (filter + decimate)
     void downsample(const float* in, float* out, int n) {
-        float temp[256]; // max block size
         int tempLen = 2 * n;
+        m_temp.resize(tempLen);
         
         // Apply anti-aliasing filter
         for (int i = 0; i < tempLen; ++i) {
@@ -64,7 +64,7 @@ public:
                     sum += downState[(-idx - 1) % kDownHistory] * kHalfBand[j];
                 }
             }
-            temp[i] = sum;
+            m_temp[i] = sum;
         }
         
         // Update history
@@ -75,7 +75,7 @@ public:
         
         // Decimate: take every 2nd sample
         for (int i = 0; i < n; ++i) {
-            out[i] = temp[i * 2];
+            out[i] = m_temp[i * 2];
         }
     }
     
