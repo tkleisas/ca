@@ -1,8 +1,8 @@
 import type { ChatMessage, AgentConfig, UsageInfo } from "./ca_types.ts";
 import { VERSION } from "./ca_types.ts";
 import { buildToolDefs, executeTool } from "./ca_tools.ts";
-import { chatCompletionStream, estimateMessagesTokens } from "./ca_client.ts";
-import { buildSystemContent, saveConversation, listSessions, createSession, saveSession, loadSession, deleteSession, type SessionMeta } from "./ca_agent.ts";
+import { chatCompletionStream, estimateMessagesTokens, type CompletionOpts } from "./ca_client.ts";
+import { buildSystemContent, saveConversation, listSessions, createSession, saveSession, loadSession, deleteSession, type SessionMeta, compactConversation } from "./ca_agent.ts";
 import { C, colorize, dim } from "./ca_ui.ts";
 import { isPathSafe } from "./ca_sandbox.ts";
 
