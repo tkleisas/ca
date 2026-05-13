@@ -130,6 +130,109 @@ export async function getProjectContext(cwd: string): Promise<string> {
   return parts.join("\n");
 }
 
+// ─── Context Compaction ────────────────────────────────
+
+/**
+ * When context usage exceeds 90%, compact the conversation by summarizing
+ * intermediate rounds while keeping the system prompt, initial user request,
+ * and most recent rounds intact.
+ *
+ * Returns the compacted messages array and a boolean indicating if compaction happened.
+ */
+export function compactConversation(messages: ChatMessage[]): { messages: ChatMessage[]; compacted: boolean } {
+  if (messages.length < 4) return { messages, compacted: false };
+
+  // Identify system message
+  const sysIdx = messages[0]?.role === "system" ? 0 : -1;
+  // First user message after system
+  const firstUserIdx = sysIdx >= 0
+    ? messages.findIndex((m, i) => i > sysIdx && m.role === "user")
+    : messages.findIndex((m) => m.role === "user");
+
+  if (firstUserIdx < 0) return { messages, compacted: false };
+
+  // Count "rounds" — each assistant message with tool_calls is a round
+  const assistantIndices: number[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    if (messages[i].role === "assistant" && messages[i].tool_calls?.length) {
+      assistantIndices.push(i);
+    }
+  }
+
+  // Need at least 3 rounds to make compaction worthwhile
+  if (assistantIndices.length < 3) return { messages, compacted: false };
+
+  // Keep the last few rounds intact (40% of rounds, min 2, max 5)
+  const keepRounds = Math.max(2, Math.min(5, Math.ceil(assistantIndices.length * 0.4)));
+  const splitPoint = assistantIndices[assistantIndices.length - keepRounds];
+
+  // Everything from firstUserIdx to splitPoint gets summarized
+  const summarizedMessages = messages.slice(firstUserIdx, splitPoint);
+
+  // Build summary
+  const summaryParts: string[] = [];
+  summaryParts.push("[Context compacted — earlier steps summarized]\n");
+
+  // Track tool usage
+  const toolCounts = new Map<string, number>();
+  const filesSeen = new Set<string>();
+  let totalAssistantMsgs = 0;
+  let totalThinkingChars = 0;
+
+  for (const msg of summarizedMessages) {
+    if (msg.role === "assistant") {
+      totalAssistantMsgs++;
+      if (msg.reasoning_content) {
+        totalThinkingChars += msg.reasoning_content.length;
+      }
+      if (msg.tool_calls) {
+        for (const tc of msg.tool_calls) {
+          toolCounts.set(tc.function.name, (toolCounts.get(tc.function.name) ?? 0) + 1);
+          try {
+            const args = JSON.parse(tc.function.arguments);
+            if (args.path) filesSeen.add(args.path as string);
+          } catch { /* ignore parse errors */ }
+        }
+      }
+    }
+    if (msg.role === "tool" && msg.content) {
+      // Check for key findings in tool results
+      const c = msg.content;
+      if (c.startsWith("Error") && c.length < 200) {
+        summaryParts.push(`- Encountered error: ${c.substring(0, 120)}`);
+      }
+    }
+  }
+
+  summaryParts.push(`\nRounds compacted: ${assistantIndices.length - keepRounds}`);
+  summaryParts.push(`Tool calls made: ${[...toolCounts.entries()].map(([k, v]) => `${k}(${v})`).join(", ")}`);
+  if (filesSeen.size > 0 && filesSeen.size <= 20) {
+    summaryParts.push(`Files examined: ${[...filesSeen].join(", ")}`);
+  }
+
+  // Build the compacted messages array
+  const compacted: ChatMessage[] = [];
+
+  // 1. System message
+  if (sysIdx >= 0) compacted.push(messages[sysIdx]);
+
+  // 2. First user message
+  compacted.push(messages[firstUserIdx]);
+
+  // 3. Summary as an assistant message
+  compacted.push({
+    role: "assistant",
+    content: summaryParts.join("\n"),
+  });
+
+  // 4. Everything from splitPoint onward
+  for (let i = splitPoint; i < messages.length; i++) {
+    compacted.push(messages[i]);
+  }
+
+  return { messages: compacted, compacted: true };
+}
+
 // ─── Agent Loop ────────────────────────────────────────
 
 export interface AgentOptions {
