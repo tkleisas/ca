@@ -353,7 +353,7 @@ export async function run(
       let usage;
       try {
         logMessagesSent(dbgLog, round, msgs);
-        const result = await chatCompletion(msgs, tools, config, { effectiveMaxOutput });
+        const result = await chatCompletion(msgs, tools, config, { effectiveMaxOutput, signal: opts?.signal });
         response = result.message;
         usage = result.usage;
         if (usage) {
@@ -361,9 +361,18 @@ export async function run(
         }
         logResponse(dbgLog, round, response, usage);
       } catch (e) {
+        if (e instanceof Error && e.name === "AbortError") {
+          console.error(`\n${colorize("⚠", dim(""))} Aborted by signal.`);
+          break;
+        }
         logError(dbgLog, round, `API error: ${(e as Error).message}`);
         spinner.fail(`API error: ${(e as Error).message}`);
         throw e;
+      }
+
+      if (opts?.signal?.aborted) {
+        console.error(`\n${colorize("⚠", dim(""))} Aborted by signal.`);
+        break;
       }
 
       msgs.push(response);
