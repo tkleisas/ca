@@ -525,7 +525,7 @@ function handleEvent(ev) {
     case "error":
       addError(ev.message);
       streaming = false;
-      document.getElementById("abort-btn").classList.remove("visible");
+      resetAbortBtn();
       setSendEnabled(true);
       break;
 
@@ -533,21 +533,21 @@ function handleEvent(ev) {
       removeThinking();
       finishAssistant(ev.rounds, ev.usage);
       streaming = false;
-      document.getElementById("abort-btn").classList.remove("visible");
+      resetAbortBtn();
       setSendEnabled(true);
       break;
 
     case "restart":
       addWarning("CA is restarting with a new version…");
       streaming = false;
-      document.getElementById("abort-btn").classList.remove("visible");
+      resetAbortBtn();
       setSendEnabled(true);
       break;
 
     case "aborted":
       addWarning("Operation aborted.");
       streaming = false;
-      document.getElementById("abort-btn").classList.remove("visible");
+      resetAbortBtn();
       setSendEnabled(true);
       break;
 
@@ -1286,6 +1286,13 @@ function abortAgent() {
   ws.send(JSON.stringify({ type: "abort" }));
 }
 
+
+function resetAbortBtn() {
+  const btn = document.getElementById("abort-btn");
+  btn.textContent = "Stop";
+  btn.disabled = false;
+  btn.classList.remove("visible");
+}
 document.getElementById("send-btn").addEventListener("click", sendMessage);
 document.getElementById("abort-btn").addEventListener("click", abortAgent);
 document.getElementById("input").addEventListener("keydown", (e) => {

@@ -177,15 +177,9 @@ export function compactConversation(messages: ChatMessage[]): { messages: ChatMe
   // Track tool usage
   const toolCounts = new Map<string, number>();
   const filesSeen = new Set<string>();
-  let totalAssistantMsgs = 0;
-  let totalThinkingChars = 0;
 
   for (const msg of summarizedMessages) {
     if (msg.role === "assistant") {
-      totalAssistantMsgs++;
-      if (msg.reasoning_content) {
-        totalThinkingChars += msg.reasoning_content.length;
-      }
       if (msg.tool_calls) {
         for (const tc of msg.tool_calls) {
           toolCounts.set(tc.function.name, (toolCounts.get(tc.function.name) ?? 0) + 1);

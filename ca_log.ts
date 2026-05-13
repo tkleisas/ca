@@ -8,7 +8,7 @@ import type { ChatMessage, UsageInfo } from "./ca_types.ts";
 let _logger: DebugLogger | null = null;
 
 export interface LogEntry {
-  ts: string;            // ISO timestamp
+  ts?: string;           // ISO timestamp (auto-filled by log())
   type: string;          // event type
   [key: string]: unknown;
 }

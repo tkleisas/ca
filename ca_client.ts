@@ -274,6 +274,10 @@ export async function* chatCompletionStream(
 
       return;
     } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") {
+        yield { type: "error", error: "Aborted" };
+        return;
+      }
       if (attempt === maxRetries - 1 || !isRetryableError(e)) {
         yield { type: "error", error: (e as Error).message };
         return;
